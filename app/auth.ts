@@ -29,8 +29,10 @@ async function getUser(email: string): Promise<User | undefined> {
   return undefined;
 }
 
-export const { auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  trustHost: true,
+  secret: process.env.AUTH_SECRET || 'antigravity-secret-key-1234567890123456',
   providers: [
     Credentials({
       async authorize(credentials) {
