@@ -1,13 +1,20 @@
 {
-  "name": "sample-web-app",
+  "name": "devops-task-manager",
   "version": "1.0.0",
-  "description": "Sample Web App with optional DB connection for CloudFormation deployment scenarios",
-  "main": "server.js",
+  "private": true,
   "scripts": {
+    "build": "vite build",
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.19.2",
-    "mysql2": "^3.9.7"
+    "lucide-react": "^0.378.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sql.js": "^1.10.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.2.0"
   }
 }
