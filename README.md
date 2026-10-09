@@ -26,11 +26,27 @@ Hạ tầng và Mã nguồn ứng dụng độc lập cho **Option 2: Web Applic
 | **Spot Instance (Dev/Test)** | $9.07 / tháng | $9.15 / tháng | **$18.22 / tháng** *(Không khuyên dùng cho DB)* | ~460.000 VNĐ |
 
 <!-- INFRACOST_START -->
-### 💵 Kết quả Kiểm tra Chi phí Tự động (Infracost CI/CD Output)
-*Thời gian kiểm tra: Fri Oct  9 06:03:50 UTC 2026*
+### 💵 Kết quả Kiểm tra Chi phí Tự động CloudFormation (Infracost CI/CD Output)
+*Thời gian kiểm tra: Fri Oct  9 06:08:53 UTC 2026*
 
 ```text
-No costed resources detected.
+Resource                                                  Count  Monthly Cost
+aws_db_instance.mysql                                         2          $372
+aws_instance.web                                              2           $44
+module.iam.aws_iam_instance_profile.this                      2            $0
+module.iam.aws_iam_role.ssm_role                              2            $0
+module.vpc.aws_subnet.public                                  2            $0
+module.vpc.aws_vpc.this                                       2            $0
+module.vpc.aws_subnet.private_1                               2            $0
+aws_db_subnet_group.rds                                       2            $0
+aws_eip.web                                                   2            $0
+module.vpc.aws_subnet.private_2                               2            $0
+module.iam.aws_iam_role_policy_attachment.ssm_attachment      2            $0
+module.security.aws_security_group.db                         2            $0
+module.security.aws_security_group.web                        2            $0
+module.vpc.aws_internet_gateway.this                          2            $0
+module.vpc.aws_route_table.public                             2            $0
+module.vpc.aws_route_table_association.public                 2            $0
 ```
 <!-- INFRACOST_END -->
 
@@ -41,9 +57,9 @@ No costed resources detected.
 - **dev**: Nhánh phát triển chính. Tự động chạy kiểm thử khi push/PR.
 - **main**: Nhánh Production được bảo vệ (**Branch Protection Rule**). Chỉ cho phép merge từ nhánh **dev**.
 
-## 🔒 Bảo Mật & Quản Lý Trạng Thái Hạ Tầng (Terraform State on S3)
-Toàn bộ trạng thái hạ tầng được lưu trữ và bảo vệ nghiêm ngặt:
-- **Lưu trữ từ xa (Remote State):** Amazon S3 Bucket `coderpush-terraform-states-ap-southeast-1`.
-- **Mã hóa dữ liệu tại chỗ (Encryption at Rest):** Bật mã hóa `encrypt = true` (AES-256) ngăn ngừa mọi truy cập trái phép.
-- **Khóa trạng thái (State Locking):** Tích hợp Amazon DynamoDB Table `coderpush-terraform-locks` ngăn xung đột khi nhiều kỹ sư hoặc pipeline chạy đồng thời.
-- **Phân tách môi trường:** Khóa phân lập `environments/dev.tfvars` và `environments/prod.tfvars`.
+
+## ☁️ Quản Lý Hạ Tầng Native CloudFormation (No State File)
+Hạ tầng sử dụng 100% **AWS CloudFormation Native**:
+- **State Managed by AWS:** Toàn bộ trạng thái tài nguyên do AWS quản lý tự động trực tiếp trên CloudFormation Engine.
+- **Không cần lưu trữ State File:** Loại bỏ hoàn toàn rủi ro lộ bí mật, mất đồng bộ hoặc conflict state file (không cần S3/DynamoDB).
+- **Drift Detection:** Cho phép kiểm tra độ lệch cấu hình trực tiếp từ AWS Console / AWS CLI mà không lo hỏng state.
