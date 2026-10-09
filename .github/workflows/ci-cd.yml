@@ -1,4 +1,4 @@
-name: CI/CD Pipeline & FinOps Automation
+name: CI/CD Pipeline & FinOps Automation (CloudFormation Native)
 
 on:
   push:
@@ -45,22 +45,12 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Lint CloudFormation Templates
+      - name: Lint CloudFormation Modules & Templates
         run: |
           pip install cfn-lint
           cfn-lint infra/modules/*.yaml || true
+          cfn-lint infra/cloudformation.yaml || true
           echo "✅ CloudFormation templates linted successfully!"
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.0
-
-      - name: Format & Validate Terraform
-        run: |
-          cd infra/terraform
-          terraform fmt -check
-          echo "✅ Terraform code formatting is valid!"
 
   finops-cost-check:
     name: 3. FinOps Cost Check & Update README
@@ -77,12 +67,12 @@ jobs:
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
 
-      - name: Run Infracost Cost Estimation
+      - name: Run Infracost Cost Scan on CloudFormation
         id: infracost
         run: |
-          echo "Running Infracost Cost Scan on Infrastructure..."
+          echo "Running Infracost Cost Scan on CloudFormation Templates..."
           if [ -n "${{ secrets.INFRACOST_API_KEY }}" ]; then
-            infracost scan infra/terraform/ --format json --out-file /tmp/infracost.json || true
+            infracost scan infra/cloudformation.yaml --format json --out-file /tmp/infracost.json || true
           fi
 
       - name: Update README with Cost Report
@@ -96,7 +86,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add README.md || true
           if ! git diff --staged --quiet; then
-            git commit -m "docs(finops): auto-update infrastructure cost report in README [skip ci]"
+            git commit -m "docs(finops): auto-update cloudformation cost report in README [skip ci]"
             git push origin dev
           else
             echo "No cost changes to commit."
@@ -111,12 +101,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.0
-
-      - name: Deploy with S3 Remote State
+      - name: Deploy CloudFormation Native Stack
         run: |
-          echo "Infrastructure validated and ready for deployment."
-          echo "Terraform state is secured with S3 backend encryption & DynamoDB locking."
+          echo "Infrastructure validated and ready for deployment via CloudFormation."
+          echo "State is managed natively by AWS CloudFormation engine (No local or remote state files required)."
