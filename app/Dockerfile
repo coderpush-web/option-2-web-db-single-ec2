@@ -1,17 +1,34 @@
-FROM node:20-alpine AS builder
+# Multi-stage Next.js Dockerfile for Amazon ECR
+FROM node:20-alpine AS base
+
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
+
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ENV NEXT_TELEMETRY_DISABLED 1
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM base AS runner
 WORKDIR /app
-COPY package*.json ./
-RUN npm install --only=production
-COPY --from=builder /app/dist ./dist
-COPY server.js ./
-RUN mkdir -p /app/data
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
+ENV PORT 80
+ENV HOSTNAME "0.0.0.0"
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
 EXPOSE 80
-ENV PORT=80
+
 CMD ["node", "server.js"]
