@@ -18,20 +18,22 @@ def update_readme(repo_dir, option_name):
     if not infracost_output:
         infracost_output = "No costed resources detected."
 
-    cost_section = f"""<!-- INFRACOST_START -->
+    cost_section = """<!-- INFRACOST_START -->
 ### 💵 Kết quả Kiểm tra Chi phí Tự động CloudFormation (Infracost CI/CD Output)
-*Thời gian kiểm tra: {subprocess.check_output(['date', '-u']).decode().strip()}*
+*Thời gian kiểm tra: """ + subprocess.check_output(['date', '-u']).decode().strip() + """*
 
 ```text
-{infracost_output}
+""" + infracost_output + """
 ```
 <!-- INFRACOST_END -->"""
 
     with open(readme_path, "r") as f:
         content = f.read()
 
-    content = re.sub(r"## 🔒 Bảo Mật & Quản Lý Trạng Thái.*?(?=
-## |\Z)", "", content, flags=re.DOTALL)
+    # Clean out any old Terraform state section
+    if "## 🔒 Bảo Mật & Quản Lý Trạng Thái" in content:
+        parts = content.split("## 🔒 Bảo Mật & Quản Lý Trạng Thái")
+        content = parts[0]
 
     cfn_state_text = """## ☁️ Quản Lý Hạ Tầng Native CloudFormation (No State File)
 Hạ tầng sử dụng 100% **AWS CloudFormation Native**:
@@ -49,16 +51,21 @@ Hạ tầng sử dụng 100% **AWS CloudFormation Native**:
         )
     else:
         if "## 3. Kiến trúc Hạ tầng" in content:
-            content = content.replace("## 3. Kiến trúc Hạ tầng", cost_section + "\n\n## 3. Kiến trúc Hạ tầng")
+            content = content.replace("## 3. Kiến trúc Hạ tầng", cost_section + "
+
+## 3. Kiến trúc Hạ tầng")
         else:
-            content += "\n\n" + cost_section
+            content += "
+
+" + cost_section
 
     if "## ☁️ Quản Lý Hạ Tầng Native CloudFormation" not in content:
-        content += "\n" + cfn_state_text
+        content += "
+" + cfn_state_text
 
     with open(readme_path, "w") as f:
         f.write(content)
-    print(f"Updated README for {option_name}")
+    print("Updated README for " + option_name)
 
 if __name__ == "__main__":
     import sys
