@@ -49,8 +49,8 @@ jobs:
       - name: Lint CloudFormation Modules & Templates
         run: |
           pip install cfn-lint
-          cfn-lint infra/modules/*.yaml
-          cfn-lint infra/cloudformation.yaml
+          cfn-lint --non-zero-exit-code error infra/modules/*.yaml
+          cfn-lint --non-zero-exit-code error infra/cloudformation.yaml
           echo "✅ CloudFormation templates linted successfully!"
 
   build-and-push-ecr:
