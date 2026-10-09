@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Option 2 Module: Web + Local DB on Single EC2 (Imports common network & security modules)'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: Production
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    AllowedValues: [t3.small, t3.medium, t3.large]
+    Description: Recommended t3.medium (4GB RAM) to avoid OOM crash
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Default: AppPass123!
+    Description: Local MySQL Database Password
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+Resources:
+  ServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref LatestAmiId
+      IamInstanceProfile:
+        Fn::ImportValue: !Sub '${EnvironmentName}-EC2InstanceProfileName'
+      SubnetId:
+        Fn::ImportValue: !Sub '${EnvironmentName}-PublicSubnetId'
+      SecurityGroupIds:
+        - Fn::ImportValue: !Sub '${EnvironmentName}-WebSecurityGroupId'
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 50
+            VolumeType: gp3
+            DeleteOnTermination: true
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          dnf update -y
+          dnf install -y nodejs npm mariadb105-server
+
+          # MariaDB configuration
+          systemctl enable mariadb
+          systemctl start mariadb
+
+          mysql -e "CREATE DATABASE IF NOT EXISTS appdb;"
+          mysql -e "CREATE USER IF NOT EXISTS 'appuser'@'localhost' IDENTIFIED BY '${DBPassword}';"
+          mysql -e "GRANT ALL PRIVILEGES ON appdb.* TO 'appuser'@'localhost';"
+          mysql -e "FLUSH PRIVILEGES;"
+
+          # Setup Web Application
+          mkdir -p /opt/app
+          cat << 'EOF' > /opt/app/package.json
+          {
+            "name": "sample-web-app",
+            "version": "1.0.0",
+            "main": "server.js",
+            "dependencies": {
+              "express": "^4.19.2",
+              "mysql2": "^3.9.7"
+            }
+          }
+          EOF
+
+          cat << 'EOF' > /opt/app/server.js
+          const express = require('express');
+          const mysql = require('mysql2/promise');
+          const app = express();
+          const port = 80;
+
+          const pool = mysql.createPool({
+            host: process.env.DB_HOST || '127.0.0.1',
+            user: process.env.DB_USER || 'appuser',
+            password: process.env.DB_PASSWORD,
+            database: process.env.DB_NAME || 'appdb',
+            waitForConnections: true,
+            connectionLimit: 5
+          });
+
+          app.get('/health', (req, res) => res.json({ status: 'ok' }));
+          app.get('/', async (req, res) => {
+            let dbStatus = 'Checking...';
+            try {
+              const [rows] = await pool.query('SELECT 1 + 1 AS solution, NOW() as current_time');
+              dbStatus = `Connected OK (Result: ${rows[0].solution}, Time: ${rows[0].current_time})`;
+            } catch (err) {
+              dbStatus = 'Failed: ' + err.message;
+            }
+            res.send(`
+              <!DOCTYPE html><html><body style="font-family:sans-serif;background:#f4f6f8;padding:40px;">
+              <div style="background:white;padding:24px;border-radius:8px;max-width:600px;margin:0 auto;box-shadow:0 4px 6px rgba(0,0,0,0.1)">
+                <h1 style="color:#ff9900;">🚀 Option 2: Web + DB on Single EC2</h1>
+                <p><strong>DB Connection:</strong> ${dbStatus}</p>
+                <p><strong>DB Host:</strong> 127.0.0.1 (Local MariaDB)</p>
+                <p><strong>Hostname:</strong> ${require('os').hostname()}</p>
+              </div></body></html>
+            `);
+          });
+          app.listen(port, () => console.log('Listening on port ' + port));
+          EOF
+
+          cd /opt/app
+          npm install
+
+          cat << EOF > /etc/systemd/system/webapp.service
+          [Unit]
+          Description=Web App Service
+          After=network.target mariadb.service
+
+          [Service]
+          Type=simple
+          User=root
+          WorkingDirectory=/opt/app
+          Environment=DB_HOST=127.0.0.1
+          Environment=DB_USER=appuser
+          Environment=DB_PASSWORD=${DBPassword}
+          Environment=DB_NAME=appdb
+          ExecStart=/usr/bin/node /opt/app/server.js
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          systemctl daemon-reload
+          systemctl enable webapp
+          systemctl start webapp
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-Option2-CombinedServer'
+
+  ServerEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref ServerInstance
+
+Outputs:
+  WebsiteURL:
+    Description: Website URL
+    Value: !Sub 'http://${ServerEIP.PublicIp}'
+  PublicIP:
+    Description: Elastic IP
+    Value: !Ref ServerEIP
