@@ -14,7 +14,10 @@ export function useActionState<State, Payload = FormData>(
       try {
         const result = await action(state, payload);
         setState(result);
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.digest?.startsWith('NEXT_REDIRECT') || err?.message === 'NEXT_REDIRECT') {
+          throw err;
+        }
         console.error('Action error:', err);
       }
     });

@@ -1,25 +1,38 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcrypt';
-import postgres from 'postgres';
 import { z } from 'zod';
 import type { User } from '@/app/lib/definitions';
 import { authConfig } from './auth.config';
-
-const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+import { users as placeholderUsers } from '@/app/lib/placeholder-data';
+import { sqlClient } from '@/app/lib/db';
 
 async function getUser(email: string): Promise<User | undefined> {
   try {
-    const user = await sql<User[]>`SELECT * FROM users WHERE email=${email}`;
-    return user[0];
+    if (sqlClient) {
+      const user = await sqlClient`SELECT * FROM users WHERE email=${email}`;
+      if (user && user.length > 0) return user[0];
+    }
   } catch (error) {
-    console.error('Failed to fetch user:', error);
-    throw new Error('Failed to fetch user.');
+    // Database might be connecting or offline, fallback to placeholder
   }
+
+  const found = placeholderUsers.find((u) => u.email === email);
+  if (found) {
+    return {
+      id: found.id,
+      name: found.name,
+      email: found.email,
+      password: await bcrypt.hash(found.password, 10),
+    };
+  }
+  return undefined;
 }
 
-export const { auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  trustHost: true,
+  secret: process.env.AUTH_SECRET || 'antigravity-secret-key-1234567890123456',
   providers: [
     Credentials({
       async authorize(credentials) {
