@@ -27,24 +27,10 @@ Hạ tầng và Mã nguồn ứng dụng độc lập cho **Option 2: Web Applic
 
 <!-- INFRACOST_START -->
 ### 💵 Kết quả Kiểm tra Chi phí Tự động (Infracost CI/CD Output)
-*Thời gian kiểm tra: Fri Oct  9 06:03:03 UTC 2026*
+*Thời gian kiểm tra: Fri Oct  9 06:03:50 UTC 2026*
 
 ```text
-Resource                                                  Count  Monthly Cost
-aws_instance.server                                           2           $87
-module.iam.aws_iam_instance_profile.this                      2            $0
-module.vpc.aws_subnet.private_1                               2            $0
-module.vpc.aws_subnet.private_2                               2            $0
-module.vpc.aws_subnet.public                                  2            $0
-module.vpc.aws_vpc.this                                       2            $0
-aws_eip.server                                                2            $0
-module.iam.aws_iam_role.ssm_role                              2            $0
-module.iam.aws_iam_role_policy_attachment.ssm_attachment      2            $0
-module.security.aws_security_group.db                         2            $0
-module.security.aws_security_group.web                        2            $0
-module.vpc.aws_internet_gateway.this                          2            $0
-module.vpc.aws_route_table.public                             2            $0
-module.vpc.aws_route_table_association.public                 2            $0
+No costed resources detected.
 ```
 <!-- INFRACOST_END -->
 
