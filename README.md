@@ -27,7 +27,7 @@ Hạ tầng và Mã nguồn ứng dụng độc lập cho **Option 2: Web Applic
 
 <!-- INFRACOST_START -->
 ### 💵 Kết quả Kiểm tra Chi phí Tự động CloudFormation (Infracost CI/CD Output)
-*Thời gian kiểm tra: Fri Oct  9 06:10:46 UTC 2026*
+*Thời gian kiểm tra: Fri Oct  9 06:45:34 UTC 2026*
 
 ```text
 No costed resources detected.
@@ -47,6 +47,27 @@ No costed resources detected.
 > 🚀 **Ghi chú triển khai:**
 > - **Môi trường Dev (`opt2-dev.png261.dev`):** Chạy chế độ debug/development, kết nối cơ sở dữ liệu Dev, phục vụ kiểm thử tính năng mới.
 > - **Môi trường Prod (`opt2.png261.dev`):** Chạy chế độ production tối ưu hóa hiệu năng cao, bảo mật nghiêm ngặt qua Cloudflare SSL/HTTPS.
+
+
+## ⚛️ Ứng Dụng React & Quy Trình Đóng Gói Docker / Amazon ECR
+
+### 1. Kiến trúc Ứng dụng Web
+- **Tên ứng dụng:** **TaskOrbit DevOps Task Management Board**
+- **Mô tả:** Bảng quản lý công việc và tiến độ triển khai DevOps tương tác cao bằng React 18, tích hợp CSDL SQLite 3 chạy cục bộ trên cùng máy chủ và ánh xạ qua Docker Volume Mount (/app/data).
+- **Công nghệ Frontend:** React 18, Vite, Lucide Icons, Modern CSS Grid & Flexbox.
+- **Backend & API:** Node.js Express phục vụ REST API và Single Page Application (SPA).
+- **Cơ sở dữ liệu:** Embedded SQLite 3 (Lưu trữ trực tiếp trên EBS Volume gp3).
+
+### 2. Tách biệt hoàn toàn Bước Build và Triển khai (Build once, Deploy everywhere)
+Quy trình tuân thủ nghiêm ngặt chuẩn DevOps hiện đại:
+1. **Multi-stage Docker Build:**
+   - **Stage 1 (Builder):** Cài đặt `devDependencies`, biên dịch mã nguồn React và assets qua Vite (`npm run build`) tạo thư mục `dist/`.
+   - **Stage 2 (Runner):** Chỉ sử dụng base image `node:20-alpine` tối giản, chỉ cài đặt production dependencies và nạp thư mục `dist/` cùng `server.js`. Image có kích thước siêu gọn (~150MB) và bảo mật cao.
+2. **Đẩy Image lên Amazon ECR:**
+   - Image sau khi build được tag theo môi trường (`latest` cho Prod, `dev-latest` cho Dev) và đẩy trực tiếp lên **Amazon Elastic Container Registry (ECR)**.
+3. **Triển khai độc lập:**
+   - Hạ tầng EC2 khi khởi tạo qua CloudFormation sẽ không tự build lại mã nguồn trên máy chủ.
+   - Thay vào đó, máy chủ EC2 chỉ việc xác thực với ECR, kéo Docker image đã được kiểm thử về và chạy bằng `systemd` / `docker run`.
 
 ## 4. Quy trình CI/CD & Branching Strategy
 - **dev**: Nhánh phát triển chính. Tự động chạy kiểm thử khi push/PR.
