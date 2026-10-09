@@ -49,8 +49,8 @@ jobs:
       - name: Lint CloudFormation Modules & Templates
         run: |
           pip install cfn-lint
-          cfn-lint infra/modules/*.yaml || true
-          cfn-lint infra/cloudformation.yaml || true
+          cfn-lint infra/modules/*.yaml
+          cfn-lint infra/cloudformation.yaml
           echo "✅ CloudFormation templates linted successfully!"
 
   build-and-push-ecr:
@@ -71,12 +71,61 @@ jobs:
             echo "ENV_NAME=dev" >> $GITHUB_OUTPUT
             echo "IMAGE_TAG=dev-latest" >> $GITHUB_OUTPUT
           fi
+          OPT_NAME=$(echo "${{ github.event.repository.name }}" | grep -oE "option-[1-4]")
+          echo "OPT_NAME=$OPT_NAME" >> $GITHUB_OUTPUT
 
       - name: Build Next.js Standalone Docker Image
         run: |
           echo "Building Next.js multi-stage Docker image..."
           docker build -t app:${{ steps.vars.outputs.IMAGE_TAG }} ./app
           echo "✅ Next.js Docker build succeeded!"
+
+      - name: Configure AWS Credentials
+        if: env.AWS_ACCESS_KEY_ID != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+
+      - name: Log in to Amazon ECR
+        if: env.AWS_ACCESS_KEY_ID != ''
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+      - name: Ensure ECR Repository Exists and Push Image
+        if: env.AWS_ACCESS_KEY_ID != ''
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ENV_NAME: ${{ steps.vars.outputs.ENV_NAME }}
+          OPT_NAME: ${{ steps.vars.outputs.OPT_NAME }}
+          IMAGE_TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+        run: |
+          REPO_NAME="${ENV_NAME}-${OPT_NAME}-web-app"
+          echo "Checking ECR repository: $REPO_NAME"
+          aws ecr describe-repositories --repository-names "$REPO_NAME" --region "$AWS_REGION" 2>/dev/null || \
+          aws ecr create-repository \
+            --repository-name "$REPO_NAME" \
+            --region "$AWS_REGION" \
+            --image-scanning-configuration scanOnPush=true
+
+          IMAGE_URI="$ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG"
+          echo "Tagging and pushing image to Amazon ECR: $IMAGE_URI"
+          docker tag "app:$IMAGE_TAG" "$IMAGE_URI"
+          docker push "$IMAGE_URI"
+
+          if [ "$IMAGE_TAG" != "latest" ]; then
+            docker tag "app:$IMAGE_TAG" "$ECR_REGISTRY/$REPO_NAME:latest"
+            docker push "$ECR_REGISTRY/$REPO_NAME:latest" || true
+          fi
+
+          echo "✅ Successfully pushed Docker image to Amazon ECR: $IMAGE_URI"
 
   finops-cost-check:
     name: 4. FinOps Cost Check & Update README
@@ -119,16 +168,40 @@ jobs:
           fi
 
   deploy-infra:
-    name: 5. Deploy Infrastructure (Main Branch Only)
+    name: 5. Deploy Infrastructure (CloudFormation)
     needs: [test-application, test-and-lint-infra, build-and-push-ecr, finops-cost-check]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Deploy CloudFormation Native Stack
+      - name: Set Environment & Tags
+        id: vars
         run: |
-          echo "Infrastructure validated and ready for deployment via CloudFormation."
-          echo "Container image is pulled directly from Amazon ECR."
-          echo "State is managed natively by AWS CloudFormation engine (Zero state files)."
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "ENV_NAME=prod" >> $GITHUB_OUTPUT
+            echo "IMAGE_TAG=latest" >> $GITHUB_OUTPUT
+          else
+            echo "ENV_NAME=dev" >> $GITHUB_OUTPUT
+            echo "IMAGE_TAG=dev-latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+
+      - name: Deploy Infrastructure Stacks via CloudFormation
+        env:
+          ENV_NAME: ${{ steps.vars.outputs.ENV_NAME }}
+          IMAGE_TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+        run: |
+          echo "🚀 Starting CloudFormation infrastructure deployment for $ENV_NAME environment..."
+          cd infra
+          chmod +x deploy.sh
+          ./deploy.sh "$ENV_NAME" "$IMAGE_TAG"
+          echo "✅ CloudFormation deployment completed successfully!"
