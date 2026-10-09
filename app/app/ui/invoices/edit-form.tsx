@@ -22,6 +22,7 @@ export default function EditInvoiceForm({
   const initialState: State = { message: null, errors: {} };
   const updateInvoiceWithId = updateInvoice.bind(null, invoice.id);
   const [state, formAction] = useActionState(updateInvoiceWithId, initialState);
+  const safeState = state || initialState;
 
   return (
     <form action={formAction}>
@@ -52,8 +53,8 @@ export default function EditInvoiceForm({
           </div>
 
           <div id="customer-error" aria-live="polite" aria-atomic="true">
-            {state.errors?.customerId &&
-              state.errors.customerId.map((error: string) => (
+            {safeState.errors?.customerId &&
+              safeState.errors.customerId.map((error: string) => (
                 <p className="mt-2 text-sm text-red-500" key={error}>
                   {error}
                 </p>
@@ -83,8 +84,8 @@ export default function EditInvoiceForm({
           </div>
 
           <div id="amount-error" aria-live="polite" aria-atomic="true">
-            {state.errors?.amount &&
-              state.errors.amount.map((error: string) => (
+            {safeState.errors?.amount &&
+              safeState.errors.amount.map((error: string) => (
                 <p className="mt-2 text-sm text-red-500" key={error}>
                   {error}
                 </p>
@@ -134,8 +135,8 @@ export default function EditInvoiceForm({
             </div>
           </div>
           <div id="status-error" aria-live="polite" aria-atomic="true">
-            {state.errors?.status &&
-              state.errors.status.map((error: string) => (
+            {safeState.errors?.status &&
+              safeState.errors.status.map((error: string) => (
                 <p className="mt-2 text-sm text-red-500" key={error}>
                   {error}
                 </p>
@@ -144,8 +145,8 @@ export default function EditInvoiceForm({
         </fieldset>
 
         <div aria-live="polite" aria-atomic="true">
-          {state.message ? (
-            <p className="my-2 text-sm text-red-500">{state.message}</p>
+          {safeState.message ? (
+            <p className="my-2 text-sm text-red-500">{safeState.message}</p>
           ) : null}
         </div>
       </div>
