@@ -27,31 +27,26 @@ Hạ tầng và Mã nguồn ứng dụng độc lập cho **Option 2: Web Applic
 
 <!-- INFRACOST_START -->
 ### 💵 Kết quả Kiểm tra Chi phí Tự động CloudFormation (Infracost CI/CD Output)
-*Thời gian kiểm tra: Fri Oct  9 06:08:53 UTC 2026*
+*Thời gian kiểm tra: Fri Oct  9 06:10:46 UTC 2026*
 
 ```text
-Resource                                                  Count  Monthly Cost
-aws_db_instance.mysql                                         2          $372
-aws_instance.web                                              2           $44
-module.iam.aws_iam_instance_profile.this                      2            $0
-module.iam.aws_iam_role.ssm_role                              2            $0
-module.vpc.aws_subnet.public                                  2            $0
-module.vpc.aws_vpc.this                                       2            $0
-module.vpc.aws_subnet.private_1                               2            $0
-aws_db_subnet_group.rds                                       2            $0
-aws_eip.web                                                   2            $0
-module.vpc.aws_subnet.private_2                               2            $0
-module.iam.aws_iam_role_policy_attachment.ssm_attachment      2            $0
-module.security.aws_security_group.db                         2            $0
-module.security.aws_security_group.web                        2            $0
-module.vpc.aws_internet_gateway.this                          2            $0
-module.vpc.aws_route_table.public                             2            $0
-module.vpc.aws_route_table_association.public                 2            $0
+No costed resources detected.
 ```
 <!-- INFRACOST_END -->
 
 ## 3. Kiến trúc Hạ tầng (Architecture Diagram)
 ![Architecture](infra/architecture_diagram.png)
+
+
+## 📸 Giao Diện Ứng Dụng Thực Tế (Live Screenshots - Dev & Prod)
+
+| Môi trường Development (`opt2-dev.png261.dev`) | Môi trường Production (`opt2.png261.dev`) |
+| :---: | :---: |
+| ![Development Environment](screenshots/dev_screenshot.png) | ![Production Environment](screenshots/prod_screenshot.png) |
+
+> 🚀 **Ghi chú triển khai:**
+> - **Môi trường Dev (`opt2-dev.png261.dev`):** Chạy chế độ debug/development, kết nối cơ sở dữ liệu Dev, phục vụ kiểm thử tính năng mới.
+> - **Môi trường Prod (`opt2.png261.dev`):** Chạy chế độ production tối ưu hóa hiệu năng cao, bảo mật nghiêm ngặt qua Cloudflare SSL/HTTPS.
 
 ## 4. Quy trình CI/CD & Branching Strategy
 - **dev**: Nhánh phát triển chính. Tự động chạy kiểm thử khi push/PR.
