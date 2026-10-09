@@ -24,16 +24,15 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Dependencies & Build Frontend
+      - name: Install Dependencies
         run: |
           cd app
           npm install
-          npm run build
 
-      - name: Run Automated Unit & API Tests
+      - name: Run Automated Unit & Integration Tests
         run: |
           node test/test_api.js
-          echo "✅ React frontend built & application tests passed successfully!"
+          echo "✅ Automated tests passed successfully!"
 
   test-and-lint-infra:
     name: 2. Test & Lint Infrastructure
@@ -73,25 +72,11 @@ jobs:
             echo "IMAGE_TAG=dev-latest" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build Docker Container
+      - name: Build Next.js Standalone Docker Image
         run: |
-          echo "Building multi-stage Docker image for application..."
+          echo "Building Next.js multi-stage Docker image..."
           docker build -t app:${{ steps.vars.outputs.IMAGE_TAG }} ./app
-          echo "✅ Docker build succeeded!"
-
-      - name: Configure AWS Credentials (OIDC or Secrets)
-        if: env.AWS_ROLE_ARN != '' || env.AWS_ACCESS_KEY_ID != ''
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ap-southeast-1
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: GitHubActions-ECR-Deploy
-        continue-on-error: true
-
-      - name: Push Image to ECR (if credentials available)
-        run: |
-          echo "ECR Push Stage configured and validated."
-          echo "Images separated completely from deployment step."
+          echo "✅ Next.js Docker build succeeded!"
 
   finops-cost-check:
     name: 4. FinOps Cost Check & Update README

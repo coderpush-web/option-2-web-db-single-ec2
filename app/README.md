@@ -1,9 +1,5 @@
-# Shared Web Application
+## Next.js App Router Course - Final
 
-Thư mục này chứa mã nguồn Node.js/Express dùng chung cho cả 4 kịch bản CloudFormation:
-- **`server.js`**: Web server nhẹ, tự động phát hiện biến môi trường (`DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`).
-  - Nếu không có DB: Chạy ở chế độ **Standalone Mode** (Dùng cho **Option 1**).
-  - Nếu có DB: Tự động kết nối và test truy vấn `SELECT 1 + 1` để kiểm tra kết nối (Dùng cho **Option 2, 3, 4**).
-- **`package.json`**: Cấu hình dependencies (`express`, `mysql2`).
+This is the final template for the Next.js App Router Course. It contains the final code for the dashboard application.
 
-UserData trong kịch bản CloudFormation sẽ tự động nén hoặc tạo file này khi máy ảo khởi chạy.
+For more information, see the [course curriculum](https://nextjs.org/learn) on the Next.js Website.
