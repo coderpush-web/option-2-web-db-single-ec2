@@ -1,13 +1,11 @@
 'use server';
 
 import { z } from 'zod';
-import postgres from 'postgres';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { signIn } from '@/auth';
 import { AuthError } from 'next-auth';
-
-const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+import { sqlClient } from './db';
 
 const FormSchema = z.object({
   id: z.string(),
@@ -58,12 +56,14 @@ export async function createInvoice(prevState: State, formData: FormData) {
 
   // Insert data into the database
   try {
-    await sql`
-      INSERT INTO invoices (customer_id, amount, status, date)
-      VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
-    `;
+    if (sqlClient) {
+      await sqlClient`
+        INSERT INTO invoices (customer_id, amount, status, date)
+        VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
+      `;
+    }
   } catch (error) {
-    // If a database error occurs, return a more specific error.
+    console.error('Failed to create invoice in database:', error);
     return {
       message: 'Database Error: Failed to Create Invoice.',
     };
@@ -96,12 +96,15 @@ export async function updateInvoice(
   const amountInCents = amount * 100;
 
   try {
-    await sql`
-      UPDATE invoices
-      SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
-      WHERE id = ${id}
-    `;
+    if (sqlClient) {
+      await sqlClient`
+        UPDATE invoices
+        SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+        WHERE id = ${id}
+      `;
+    }
   } catch (error) {
+    console.error('Failed to update invoice in database:', error);
     return { message: 'Database Error: Failed to Update Invoice.' };
   }
 
@@ -110,7 +113,13 @@ export async function updateInvoice(
 }
 
 export async function deleteInvoice(id: string) {
-  await sql`DELETE FROM invoices WHERE id = ${id}`;
+  try {
+    if (sqlClient) {
+      await sqlClient`DELETE FROM invoices WHERE id = ${id}`;
+    }
+  } catch (error) {
+    console.error('Failed to delete invoice in database:', error);
+  }
   revalidatePath('/dashboard/invoices');
 }
 
