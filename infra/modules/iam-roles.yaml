@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Common IAM Module: SSM Session Manager Role for secure instance remote access'
+Description: 'Common IAM Module: SSM Session Manager Role & ECR Read Only for secure instance remote access'
 
 Parameters:
   EnvironmentName:
@@ -20,6 +20,7 @@ Resources:
             Action: ['sts:AssumeRole']
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-ec2-ssm-role'
