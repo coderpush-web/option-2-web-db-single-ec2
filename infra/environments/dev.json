@@ -3,6 +3,8 @@
     "EnvironmentName": "dev",
     "InstanceType": "t3.small",
     "VolumeSize": "30",
-    "DBPassword": "DevSecretPassword123!"
+    "DBPassword": "DevPass123!Secure",
+    "DomainName": "png261.dev",
+    "SubdomainName": "opt2-dev.png261.dev"
   }
 }

@@ -42,6 +42,20 @@ No costed resources detected.
 - **main**: Nhánh Production được bảo vệ (**Branch Protection Rule**). Chỉ cho phép merge từ nhánh **dev**.
 
 
+## 🌐 Cấu Hình Tên Miền Tùy Chỉnh (Custom Domain: `png261.dev`)
+
+Hạ tầng hỗ trợ ánh xạ tên miền `png261.dev` cho cả môi trường Development và Production:
+
+| Môi trường | Nhánh Git | Subdomain | Loại bản ghi DNS | Giá trị đích (Target) | Proxy Cloudflare |
+| :--- | :--- | :--- | :---: | :--- | :---: |
+| **Development** | `dev` | `opt2-dev.png261.dev` | `A` | `${ServerEIP.PublicIp}` (Dev EIP) | Bật (Proxied ☁️) |
+| **Production** | `main` | `opt2.png261.dev` | `A` | `${ServerEIP.PublicIp}` (Prod EIP) | Bật (Proxied ☁️) |
+
+> 💡 **Khuyến nghị SSL/HTTPS qua Cloudflare:**
+> Do tên miền `png261.dev` được quản trị Nameserver tại Cloudflare, khi tạo bản ghi `A` với trạng thái **Proxied (Đám mây màu cam ☁️)**:
+> - Cloudflare sẽ tự động cấp chứng chỉ **Universal SSL/TLS miễn phí** (HTTPS xanh).
+> - Tự động kích hoạt CDN caching và bảo vệ chống tấn công DDoS Lớp 7.
+
 ## ☁️ Quản Lý Hạ Tầng Native CloudFormation (No State File)
 Hạ tầng sử dụng 100% **AWS CloudFormation Native**:
 - **State Managed by AWS:** Toàn bộ trạng thái tài nguyên do AWS quản lý tự động trực tiếp trên CloudFormation Engine.

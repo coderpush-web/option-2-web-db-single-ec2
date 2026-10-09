@@ -3,6 +3,8 @@
     "EnvironmentName": "prod",
     "InstanceType": "t3.medium",
     "VolumeSize": "50",
-    "DBPassword": "ProdMasterPasswordSecure2026!"
+    "DBPassword": "ProdPass123!SecureP@ss",
+    "DomainName": "png261.dev",
+    "SubdomainName": "opt2.png261.dev"
   }
 }

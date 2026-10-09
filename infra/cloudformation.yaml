@@ -27,6 +27,16 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
 
+  DomainName:
+    Type: String
+    Default: png261.dev
+    Description: Root domain name
+
+  SubdomainName:
+    Type: String
+    Default: opt2-dev.png261.dev
+    Description: Subdomain for this environment (e.g. opt2-dev.png261.dev or opt2.png261.dev)
+
 Resources:
   ServerInstance:
     Type: AWS::EC2::Instance
@@ -161,4 +171,19 @@ Outputs:
     Value: !Sub 'http://${ServerEIP.PublicIp}'
   PublicIP:
     Description: Elastic IP
+    Value: !Ref ServerEIP
+  CustomDomainURL:
+    Description: Custom Domain Website URL (png261.dev)
+    Value: !Sub 'https://${SubdomainName}'
+  RootDomain:
+    Description: Root Domain Name
+    Value: !Ref DomainName
+  DnsRecordType:
+    Description: DNS Record Type for Cloudflare / Route 53
+    Value: 'A'
+  DnsRecordName:
+    Description: DNS Record Name
+    Value: !Ref SubdomainName
+  DnsRecordValue:
+    Description: DNS Record Value (IPv4 Target)
     Value: !Ref ServerEIP
