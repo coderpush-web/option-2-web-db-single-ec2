@@ -244,7 +244,7 @@ Resources:
             - HEAD
             - OPTIONS
           CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
-          OriginRequestPolicyId: 216adef6-5c1d-47e7-81dd-c14a2a485ea9
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
           Compress: true
         CacheBehaviors:
           - PathPattern: '/_next/static/*'
