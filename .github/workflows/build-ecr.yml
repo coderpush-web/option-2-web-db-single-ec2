@@ -1,0 +1,106 @@
+name: CD - Build & Push Image to ECR
+
+on:
+  push:
+    branches: [ dev, main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment (dev or prod)'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+
+concurrency:
+  group: build-ecr-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-push-ecr:
+    name: Build Docker Image & Push to Amazon ECR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Environment & Tags
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENV_NAME="${{ inputs.environment }}"
+            if [ "$ENV_NAME" = "prod" ]; then
+              IMAGE_TAG="latest"
+            else
+              IMAGE_TAG="dev-latest"
+            fi
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            ENV_NAME="prod"
+            IMAGE_TAG="latest"
+          else
+            ENV_NAME="dev"
+            IMAGE_TAG="dev-latest"
+          fi
+          echo "ENV_NAME=$ENV_NAME" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+          OPT_NAME=$(echo "${{ github.event.repository.name }}" | grep -oE "option-[1-4]")
+          if [ -z "$OPT_NAME" ]; then
+            OPT_NAME=$(basename "$PWD" | grep -oE "option-[1-4]" || echo "option-1")
+          fi
+          echo "OPT_NAME=$OPT_NAME" >> $GITHUB_OUTPUT
+
+      - name: Build Next.js Standalone Docker Image
+        run: |
+          echo "Building Next.js multi-stage Docker image..."
+          docker build -t app:${{ steps.vars.outputs.IMAGE_TAG }} ./app
+          echo "✅ Next.js Docker build succeeded!"
+
+      - name: Configure AWS Credentials
+        if: env.AWS_ACCESS_KEY_ID != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+
+      - name: Log in to Amazon ECR
+        if: env.AWS_ACCESS_KEY_ID != ''
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+      - name: Ensure ECR Repository Exists and Push Image
+        if: env.AWS_ACCESS_KEY_ID != ''
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ENV_NAME: ${{ steps.vars.outputs.ENV_NAME }}
+          OPT_NAME: ${{ steps.vars.outputs.OPT_NAME }}
+          IMAGE_TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+        run: |
+          REPO_NAME="${ENV_NAME}-${OPT_NAME}-web-app"
+          echo "Checking ECR repository: $REPO_NAME"
+          aws ecr describe-repositories --repository-names "$REPO_NAME" --region "$AWS_REGION" 2>/dev/null ||           aws ecr create-repository             --repository-name "$REPO_NAME"             --region "$AWS_REGION"             --image-scanning-configuration scanOnPush=true
+
+          IMAGE_URI="$ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG"
+          echo "Tagging and pushing image to Amazon ECR: $IMAGE_URI"
+          docker tag "app:$IMAGE_TAG" "$IMAGE_URI"
+          docker push "$IMAGE_URI"
+
+          if [ "$IMAGE_TAG" != "latest" ]; then
+            docker tag "app:$IMAGE_TAG" "$ECR_REGISTRY/$REPO_NAME:latest"
+            docker push "$ECR_REGISTRY/$REPO_NAME:latest" || true
+          fi
+
+          echo "✅ Successfully pushed Docker image to Amazon ECR: $IMAGE_URI"

@@ -1,0 +1,34 @@
+name: CI - Infrastructure Lint
+
+on:
+  push:
+    branches: [ dev, main ]
+  pull_request:
+    branches: [ dev, main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-infra-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-lint-infra:
+    name: Test & Lint Infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python for cfn-lint
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Lint CloudFormation Modules & Templates
+        run: |
+          pip install cfn-lint
+          cfn-lint --non-zero-exit-code error infra/modules/*.yaml
+          echo "✅ CloudFormation templates linted successfully!"

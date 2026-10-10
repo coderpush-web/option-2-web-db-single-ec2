@@ -1,0 +1,84 @@
+name: CD - Deploy Infrastructure
+
+on:
+  workflow_run:
+    workflows: ["CD - Build & Push Image to ECR"]
+    branches: [main]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment (dev or prod)'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - dev
+      image_tag:
+        description: 'Docker image tag (optional, defaults to latest for prod, dev-latest for dev)'
+        required: false
+        default: ''
+
+concurrency:
+  group: deploy-infra-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-infra:
+    name: Deploy Infrastructure (CloudFormation)
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+
+      - name: Set Environment & Tags
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENV_NAME="${{ inputs.environment }}"
+            if [ -n "${{ inputs.image_tag }}" ]; then
+              IMAGE_TAG="${{ inputs.image_tag }}"
+            elif [ "$ENV_NAME" = "prod" ]; then
+              IMAGE_TAG="latest"
+            else
+              IMAGE_TAG="dev-latest"
+            fi
+          else
+            ENV_NAME="prod"
+            IMAGE_TAG="latest"
+          fi
+          echo "ENV_NAME=$ENV_NAME" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS Credentials
+        if: env.AWS_ACCESS_KEY_ID != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+
+      - name: Deploy Infrastructure Stacks via CloudFormation
+        if: env.AWS_ACCESS_KEY_ID != ''
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          ENV_NAME: ${{ steps.vars.outputs.ENV_NAME }}
+          IMAGE_TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+        run: |
+          echo "🚀 Starting CloudFormation infrastructure deployment for $ENV_NAME environment..."
+          cd infra
+          chmod +x deploy.sh
+          ./deploy.sh "$ENV_NAME" "$IMAGE_TAG"
+          echo "✅ CloudFormation deployment completed successfully!"

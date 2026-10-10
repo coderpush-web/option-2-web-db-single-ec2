@@ -246,6 +246,23 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
+  SecretsManagerEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-secretsmanager-vpce'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
 Outputs:
   VpcId:
     Description: VPC ID
