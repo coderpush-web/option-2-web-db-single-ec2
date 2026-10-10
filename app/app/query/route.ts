@@ -14,13 +14,17 @@ async function listInvoices() {
 }
 
 export async function GET() {
-  // return Response.json({
-  //   message:
-  //     'Uncomment this file and remove this line. You can delete this file when you are finished.',
-  // });
+  if (process.env.NODE_ENV === 'production') {
+    return Response.json(
+      { message: 'Query endpoint is disabled in production' },
+      { status: 403 }
+    );
+  }
+
   try {
     return Response.json(await listInvoices());
   } catch (error) {
-    return Response.json({ error }, { status: 500 });
+    console.error('Database query error:', error);
+    return Response.json({ message: 'Failed to query database' }, { status: 500 });
   }
 }
