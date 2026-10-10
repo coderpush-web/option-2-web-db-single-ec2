@@ -1,99 +1,140 @@
-# Option 2: Web Application + Local MySQL DB on Single EC2
+# Option 2: Web Application + Local DB on Single EC2
 
-Hạ tầng và Mã nguồn ứng dụng độc lập cho **Option 2: Web Application + Local MySQL DB on Single EC2**.
+Independent infrastructure and application source code for **Option 2: Web Application + Local Persistent DB on Single EC2 with Amazon CloudFront Edge Caching**.
 
-## 1. Cấu trúc thư mục (File Structure)
+## 1. Directory Structure (File Structure)
 ```text
 .
 ├── .github/workflows/ci-cd.yml   # CI/CD Pipeline (test code, lint CloudFormation, auto-deploy)
-├── app/                          # Mã nguồn Website độc lập (Node.js/Express)
-├── infra/                        # Mã nguồn CloudFormation hạ tầng AWS
-│   ├── cloudformation.yaml       # Template CloudFormation độc lập
-│   └── architecture_diagram.png  # Sơ đồ kiến trúc Diagram-as-Code
-├── test/                         # Kiểm thử tự động (Unit test API & app)
+├── app/                          # Standalone web application (Next.js / Node.js)
+├── docs/                         # Technical documentation (Deployment, Operations, Architecture)
+├── infra/                        # AWS CloudFormation Infrastructure-as-Code
+│   ├── cloudformation.yaml       # Consolidated CloudFormation template
+│   ├── modules/                  # Modular templates (app.yaml, vpc-subnets.yaml, etc.)
+│   ├── environments/             # Environment parameters for dev & prod
+│   └── architecture_diagram.png  # Diagram-as-Code architecture diagram
+├── test/                         # Automated tests (Unit test & API integration tests)
 │   └── test_api.js
-└── README.md                     # Báo cáo kỹ thuật và ma trận chi phí
+└── README.md                     # Technical report, cost matrix, and architectural summary
 ```
 
-## 2. Báo cáo Chi phí Đa Chiều (Multi-Dimension Cost Analysis)
+## 2. Multi-Dimension Cost Analysis
 
-### A. Chi phí theo Mô hình Thanh toán (Khuyên dùng tối thiểu t3.medium 4GB RAM)
-| Mô hình thanh toán | Đơn giá EC2 Compute | Thành phần phụ (IP + 50GB EBS + Backup) | Tổng chi phí / tháng | Quy đổi VNĐ |
+### A. Cost by Purchasing Option (t3.medium 4GB RAM Recommended for Web + DB)
+| Purchasing Model | EC2 Compute | Supporting Components (IP + 50GB EBS + Backup) | Total Monthly Cost | Approx. Local Currency (VND) |
 | :--- | :--- | :--- | :--- | :--- |
-| **On-Demand (Mặc định)** | $30.37 / tháng | $9.15 / tháng | **$39.52 / tháng** | ~998.000 VNĐ |
-| **1-Year Savings Plan (Cam kết 1 năm)** | $19.13 / tháng | $9.15 / tháng | **$28.28 / tháng** *(Giảm 28%)* | ~714.000 VNĐ |
-| **3-Year Savings Plan (Cam kết 3 năm)** | $12.13 / tháng | $9.15 / tháng | **$21.28 / tháng** *(Giảm 46%)* | ~537.000 VNĐ |
-| **Spot Instance (Dev/Test)** | $9.07 / tháng | $9.15 / tháng | **$18.22 / tháng** *(Không khuyên dùng cho DB)* | ~460.000 VNĐ |
+| **On-Demand (Default)** | $30.37 / mo | $9.15 / mo | **$39.52 / mo** | ~998,000 VND |
+| **1-Year Savings Plan (1-Yr Commitment)** | $19.13 / mo | $9.15 / mo | **$28.28 / mo** *(28% savings)* | ~714,000 VND |
+| **3-Year Savings Plan (3-Yr Commitment)** | $12.13 / mo | $9.15 / mo | **$21.28 / mo** *(46% savings)* | ~537,000 VND |
+| **Spot Instance (Dev/Test Only)** | $9.07 / mo | $9.15 / mo | **$18.22 / mo** *(Not recommended for stateful DB)* | ~460,000 VND |
 
 <!-- INFRACOST_START -->
-### 💵 Kết quả Kiểm tra Chi phí Tự động CloudFormation (Infracost CI/CD Output)
-*Thời gian kiểm tra: Sat Oct 10 09:30:46 UTC 2026*
+### 💵 Automated CloudFormation Cost Scan (Infracost CI/CD Output)
+*Scan timestamp: Sat Oct 10 09:30:46 UTC 2026*
 
 ```text
 No costed resources detected.
 ```
 <!-- INFRACOST_END -->
 
-## 3. Kiến trúc Hạ tầng (Architecture Diagram)
+## 3. Architecture Overview
 ![Architecture](infra/architecture_diagram.png)
 
-### Điểm nổi bật của kiến trúc:
-- **CloudFront CDN Edge Caching:** Caching tối ưu cho static assets (`/_next/static/*`, `/static/*`), giảm tải request vào EC2 instance duy nhất, giúp bảo vệ tài nguyên CPU/RAM cho database SQLite chạy cục bộ.
-- **Single EC2 Web + Local Database:** Máy chủ EC2 chạy Dockerized Node.js/Next.js kết hợp database SQLite cục bộ lưu trên ổ đĩa EBS gp3 mã hóa.
-- **AWS-Native Custom Domain:** Định tuyến trực tiếp người dùng qua DNS CNAME (DNS-only) tới Amazon CloudFront Edge & ALB endpoint.
+```mermaid
+flowchart TD
+    subgraph Client ["Client Access"]
+        Users["Users / Browsers"]
+        Domain["Custom Domain (opt2.png261.dev)"]
+    end
 
-## 📸 Giao Diện Ứng Dụng Thực Tế (Live Screenshots - Dev & Prod)
+    subgraph Edge ["Edge Layer"]
+        CF["Amazon CloudFront CDN (Cache Static /_next/*)"]
+    end
 
-| Môi trường Development (`opt2-dev.png261.dev`) | Môi trường Production (`opt2.png261.dev`) |
+    subgraph AWS_VPC ["AWS VPC (ap-southeast-1)"]
+        subgraph Public_Subnets ["Public Subnets (AZ1 & AZ2)"]
+            ALB["Application Load Balancer (ALB)"]
+            TG["Target Group (Healthcheck: /api/health)"]
+        end
+
+        subgraph Private_Subnet ["Private Subnet (AZ1)"]
+            subgraph EC2 ["Standalone Web & DB Server"]
+                Container["Docker Next.js Container (Port 80)"]
+                EBS_Vol["EBS GP3 Volume (/var/data/sqlite)"]
+                Container -->|Mount Volume| EBS_Vol
+            end
+        end
+    end
+
+    subgraph Management ["Observability & Deployment"]
+        CW_Logs["CloudWatch LogGroup<br/>(14d Dev / 30d Prod)"]
+        CW_Alarms["CloudWatch Alarms<br/>(ALB 5XX + EC2 CPU > 85%)"]
+        SNS["SNS OpsAlertTopic"]
+        Email["Ops Alert Email"]
+        SSM["AWS Systems Manager (SSM Agent)"]
+        CI_CD["GitHub Actions CI/CD<br/>(SSM Remote Container Reload)"]
+    end
+
+    Users --> Domain --> CF
+    CF -->|Dynamic requests| ALB
+    ALB --> TG --> Container
+    EC2 -.->|Logs| CW_Logs
+    EC2 -.->|Metrics| CW_Alarms
+    ALB -.->|Metrics| CW_Alarms
+    CW_Alarms --> SNS --> Email
+    CI_CD -->|SSM Run Command| SSM --> Container
+```
+
+### Key Architectural Highlights:
+- **CloudFront CDN Edge Caching:** Caches static assets (`/_next/static/*`) globally, reducing direct request pressure on the single EC2 server to preserve CPU/RAM for the co-located local database.
+- **Application Load Balancer (ALB):** Spans Multi-AZ Public Subnets, handling SSL/TLS termination and forwarding traffic to the private EC2 instance.
+- **Single EC2 Web + Local Database:** Runs the Dockerized Next.js application alongside a local SQLite database mounted onto an encrypted EBS gp3 volume (`/var/data/sqlite`).
+- **AWS SSM Container Reload:** CI/CD triggers zero-SSH remote container updates via `aws ssm send-command`, pulling the latest image without opening inbound port 22.
+- **Automated Monitoring & Alerts:** CloudWatch Alarms (ALB 5XX and EC2 CPU > 85%) notify engineers via Amazon SNS Topic; log retention auto-expires after 14 days (Dev) / 30 days (Prod).
+- **AWS-Native Custom Domain:** Directs user traffic via DNS CNAME (DNS-only) directly to Amazon CloudFront Edge & ALB endpoints.
+
+## 📸 Application Screenshots (Live Environments: Dev & Prod)
+
+| Development Environment (`opt2-dev.png261.dev`) | Production Environment (`opt2.png261.dev`) |
 | :---: | :---: |
 | ![Development Environment](screenshots/dev_screenshot.png) | ![Production Environment](screenshots/prod_screenshot.png) |
 
-> 🚀 **Ghi chú triển khai:**
-> - **Môi trường Dev (`opt2-dev.png261.dev`):** Chạy chế độ debug/development, kết nối cơ sở dữ liệu Dev, phục vụ kiểm thử tính năng mới.
-> - **Môi trường Prod (`opt2.png261.dev`):** Chạy chế độ production tối ưu hóa hiệu năng cao, bảo mật chuẩn AWS ACM SSL/HTTPS.
+> 🚀 **Deployment Notes:**
+> - **Development (`opt2-dev.png261.dev`):** Runs debug mode with dev configuration parameters.
+> - **Production (`opt2.png261.dev`):** Optimized production mode with automated EBS volume persistence and AWS ACM SSL encryption.
 
+## ⚛️ Web Application & Docker / Amazon ECR Delivery
 
-## ⚛️ Ứng Dụng React & Quy Trình Đóng Gói Docker / Amazon ECR
+### 1. Web Application Architecture
+- **Application:** Next.js Dashboard & Management Platform.
+- **Frontend Stack:** React 18, Next.js App Router, Tailwind CSS, Lucide Icons.
+- **Backend & API:** Node.js Next.js Server Actions and REST API routes.
+- **Database:** Local embedded persistent database (stored directly on encrypted EBS gp3 volume).
 
-### 1. Kiến trúc Ứng dụng Web
-- **Tên ứng dụng:** **TaskOrbit DevOps Task Management Board**
-- **Mô tả:** Bảng quản lý công việc và tiến độ triển khai DevOps tương tác cao bằng React 18, tích hợp CSDL SQLite 3 chạy cục bộ trên cùng máy chủ và ánh xạ qua Docker Volume Mount (/app/data).
-- **Công nghệ Frontend:** React 18, Vite, Lucide Icons, Modern CSS Grid & Flexbox.
-- **Backend & API:** Node.js Express phục vụ REST API và Single Page Application (SPA).
-- **Cơ sở dữ liệu:** Embedded SQLite 3 (Lưu trữ trực tiếp trên EBS Volume gp3).
+### 2. Separation of Build and Deployment (Build Once, Deploy Everywhere)
+1. **Multi-Stage Docker Build:**
+   - **Stage 1 (Builder):** Compiles Next.js frontend assets and server components.
+   - **Stage 2 (Runner):** Lightweight `node:20-alpine` base image containing only required production runtime files.
+2. **Push to Amazon ECR:**
+   - Image tagged by environment (`latest` for Prod, `dev-latest` for Dev) and pushed to **Amazon Elastic Container Registry (ECR)**.
+3. **Decoupled Deployment:**
+   - Host EC2 instance does not rebuild code on-box. It pulls tested containers from ECR and manages runtime lifecycle via `systemd`.
 
-### 2. Tách biệt hoàn toàn Bước Build và Triển khai (Build once, Deploy everywhere)
-Quy trình tuân thủ nghiêm ngặt chuẩn DevOps hiện đại:
-1. **Multi-stage Docker Build:**
-   - **Stage 1 (Builder):** Cài đặt `devDependencies`, biên dịch mã nguồn React và assets qua Vite (`npm run build`) tạo thư mục `dist/`.
-   - **Stage 2 (Runner):** Chỉ sử dụng base image `node:20-alpine` tối giản, chỉ cài đặt production dependencies và nạp thư mục `dist/` cùng `server.js`. Image có kích thước siêu gọn (~150MB) và bảo mật cao.
-2. **Đẩy Image lên Amazon ECR:**
-   - Image sau khi build được tag theo môi trường (`latest` cho Prod, `dev-latest` cho Dev) và đẩy trực tiếp lên **Amazon Elastic Container Registry (ECR)**.
-3. **Triển khai độc lập:**
-   - Hạ tầng EC2 khi khởi tạo qua CloudFormation sẽ không tự build lại mã nguồn trên máy chủ.
-   - Thay vào đó, máy chủ EC2 chỉ việc xác thực với ECR, kéo Docker image đã được kiểm thử về và chạy bằng `systemd` / `docker run`.
+## 4. CI/CD Workflow & Branching Strategy
+- **`dev`**: Main development branch. Automatically runs tests and builds development containers.
+- **`main`**: Protected production branch (**Branch Protection Rules** enforce PR reviews). Merging triggers automated production deployment and SSM remote container reload.
 
-## 4. Quy trình CI/CD & Branching Strategy
-- **dev**: Nhánh phát triển chính. Tự động chạy kiểm thử khi push/PR.
-- **main**: Nhánh Production được bảo vệ (**Branch Protection Rule**). Chỉ cho phép merge từ nhánh **dev**.
+## 🌐 Custom Domain Configuration (`png261.dev`)
 
+The infrastructure routes traffic for `png261.dev` across both environments:
 
-## 🌐 Cấu Hình Tên Miền Tùy Chỉnh (Custom Domain: `png261.dev`)
-
-Hạ tầng hỗ trợ ánh xạ tên miền `png261.dev` cho cả môi trường Development và Production:
-
-| Môi trường | Nhánh Git | Subdomain | Loại bản ghi DNS | Giá trị đích (Target) | Chế độ Proxy |
+| Environment | Git Branch | Subdomain | Record Type | Target Destination | Proxy Status |
 | :--- | :--- | :--- | :---: | :--- | :--- |
-| **Development** | `dev` | `opt2-dev.png261.dev` | `CNAME` | `${CloudFrontDistribution.DomainName}` | DNS Only (☁️ Tắt / Grey) |
-| **Production** | `main` | `opt2.png261.dev` | `CNAME` | `${CloudFrontDistribution.DomainName}` | DNS Only (☁️ Tắt / Grey) |
+| **Development** | `dev` | `opt2-dev.png261.dev` | `CNAME` | `${CloudFrontDistribution.DomainName}` | DNS Only (☁️ Grey Cloud) |
+| **Production** | `main` | `opt2.png261.dev` | `CNAME` | `${CloudFrontDistribution.DomainName}` | DNS Only (☁️ Grey Cloud) |
 
-> 💡 **Cấu hình DNS Chuẩn AWS-Native:**
-> Tên miền `png261.dev` được cấu hình bản ghi `CNAME` ở chế độ **DNS Only (Grey cloud ☁️)** trỏ trực tiếp đến Amazon CloudFront Distribution.
-> - Toàn bộ lưu lượng truy cập được phục vụ và cache trực tiếp bởi mạng lưới AWS Edge Locations toàn cầu.
-> - Kết nối bảo mật HTTPS đầu-cuối qua AWS ACM Certificate trên CloudFront.
-
-## ☁️ Quản Lý Hạ Tầng Native CloudFormation (No State File)
-Hạ tầng sử dụng 100% **AWS CloudFormation Native**:
-- **State Managed by AWS:** Toàn bộ trạng thái tài nguyên do AWS quản lý tự động trực tiếp trên CloudFormation Engine.
-- **Không cần lưu trữ State File:** Loại bỏ hoàn toàn rủi ro lộ bí mật, mất đồng bộ hoặc conflict state file (không cần S3/DynamoDB).
-- **Drift Detection:** Cho phép kiểm tra độ lệch cấu hình trực tiếp từ AWS Console / AWS CLI mà không lo hỏng state.
+## ☁️ Native AWS CloudFormation Infrastructure Management (No State File)
+The entire infrastructure is 100% managed with **AWS CloudFormation Native**:
+- **AWS-Managed State:** Resource state is maintained internally by AWS CloudFormation.
+- **Zero State File Overhead:** Eliminates state locking conflicts, accidental leaks, and S3/DynamoDB maintenance overhead.
+- **Drift Detection:** Enables automated configuration drift detection directly from the AWS Console or AWS CLI.

@@ -75,6 +75,22 @@ aws cloudformation deploy \
   --no-fail-on-empty-changeset \
   --region "$REGION"
 
+# 5. Tải lại container mới nhất trên Web EC2 qua AWS SSM Run Command
+echo "5. Tải lại Docker container mới trên EC2 qua SSM ($ENV-web-sqlite-server)..."
+INSTANCE_ID=$(aws ec2 describe-instances \
+  --filters "Name=tag:Name,Values=$ENV-web-sqlite-server" "Name=instance-state-name,Values=running" \
+  --region "$REGION" \
+  --query "Reservations[0].Instances[0].InstanceId" \
+  --output text 2>/dev/null || true)
+if [ -n "$INSTANCE_ID" ] && [ "$INSTANCE_ID" != "None" ]; then
+  aws ssm send-command \
+    --instance-ids "$INSTANCE_ID" \
+    --document-name "AWS-RunShellScript" \
+    --parameters 'commands=["systemctl restart react-webapp"]' \
+    --region "$REGION" >/dev/null 2>&1 || true
+  echo "Đã gửi tín hiệu reload tới instance $INSTANCE_ID qua AWS SSM."
+fi
+
 echo ""
 echo "=== CloudFormation Stack Outputs ==="
 aws cloudformation describe-stacks \
