@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Common Security Groups Module: ALB SG, Private App SG, Standalone Web SG, and Internal DB SG'
+Description: 'Common Security Groups Module: ALB SG, Private App SG, and Internal DB SG'
 
 Parameters:
   EnvironmentName:
@@ -47,27 +47,6 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
-  StandaloneWebSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow public HTTP and HTTPS for standalone EC2
-      VpcId:
-        Fn::ImportValue: !Sub '${EnvironmentName}-VpcId'
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-      Tags:
-        - Key: Name
-          Value: !Sub '${EnvironmentName}-standalone-web-sg'
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
   DatabaseSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -97,12 +76,6 @@ Outputs:
     Value: !Ref WebSecurityGroup
     Export:
       Name: !Sub '${EnvironmentName}-WebSecurityGroupId'
-
-  StandaloneWebSecurityGroupId:
-    Description: Standalone Web Security Group ID (Public Ingress)
-    Value: !Ref StandaloneWebSecurityGroup
-    Export:
-      Name: !Sub '${EnvironmentName}-StandaloneWebSecurityGroupId'
 
   DatabaseSecurityGroupId:
     Description: Database Security Group ID
