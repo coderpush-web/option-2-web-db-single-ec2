@@ -21,8 +21,8 @@ def update_readme(repo_dir, option_name):
     date_str = subprocess.check_output(['date', '-u']).decode().strip()
     cost_section = (
         "<!-- INFRACOST_START -->\n"
-        "### 💵 Kết quả Kiểm tra Chi phí Tự động CloudFormation (Infracost CI/CD Output)\n"
-        f"*Thời gian kiểm tra: {date_str}*\n\n"
+        "### 💵 Automated CloudFormation Cost Scan (Infracost CI/CD Output)\n"
+        f"*Scan timestamp: {date_str}*\n\n"
         "```text\n"
         f"{infracost_output}\n"
         "```\n"
@@ -38,11 +38,11 @@ def update_readme(repo_dir, option_name):
         content = parts[0]
 
     cfn_state_text = (
-        "## ☁️ Quản Lý Hạ Tầng Native CloudFormation (No State File)\n"
-        "Hạ tầng sử dụng 100% **AWS CloudFormation Native**:\n"
-        "- **State Managed by AWS:** Toàn bộ trạng thái tài nguyên do AWS quản lý tự động trực tiếp trên CloudFormation Engine.\n"
-        "- **Không cần lưu trữ State File:** Loại bỏ hoàn toàn rủi ro lộ bí mật, mất đồng bộ hoặc conflict state file (không cần S3/DynamoDB).\n"
-        "- **Drift Detection:** Cho phép kiểm tra độ lệch cấu hình trực tiếp từ AWS Console / AWS CLI mà không lo hỏng state.\n"
+        "## ☁️ Native AWS CloudFormation Infrastructure Management (No State File)\n"
+        "The infrastructure is managed 100% via **AWS CloudFormation Native**:\n"
+        "- **AWS-Managed State:** Resource state is directly managed by the AWS CloudFormation engine.\n"
+        "- **Zero State File Overhead:** Eliminates state locking, secret leakage, and remote backend synchronization issues (no S3/DynamoDB locks needed).\n"
+        "- **Drift Detection:** Enables automated drift detection directly from the AWS Console and AWS CLI.\n"
     )
 
     if '<!-- INFRACOST_START -->' in content:
@@ -53,12 +53,14 @@ def update_readme(repo_dir, option_name):
             flags=re.DOTALL
         )
     else:
-        if '## 3. Kiến trúc Hạ tầng' in content:
+        if '## 3. Architecture Overview' in content:
+            content = content.replace('## 3. Architecture Overview', cost_section + '\n\n## 3. Architecture Overview')
+        elif '## 3. Kiến trúc Hạ tầng' in content:
             content = content.replace('## 3. Kiến trúc Hạ tầng', cost_section + '\n\n## 3. Kiến trúc Hạ tầng')
         else:
             content += '\n\n' + cost_section
 
-    if '## ☁️ Quản Lý Hạ Tầng Native CloudFormation' not in content:
+    if '## ☁️ Native AWS CloudFormation' not in content and '## ☁️ Quản Lý Hạ Tầng' not in content:
         content += '\n' + cfn_state_text
 
     with open(readme_path, 'w', encoding='utf-8') as f:

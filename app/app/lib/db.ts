@@ -4,7 +4,7 @@ import { invoices, customers, revenue } from './placeholder-data';
 const connectionString =
   process.env.POSTGRES_URL ||
   process.env.DATABASE_URL ||
-  'postgres://png@127.0.0.1:5432/postgres';
+  'postgres://postgres:postgres@127.0.0.1:5432/postgres';
 
 let sqlClient: any = null;
 

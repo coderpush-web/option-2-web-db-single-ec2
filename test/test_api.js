@@ -13,5 +13,6 @@ assert.ok(pkg.dependencies.react, 'React dependency must be present');
 
 assert.ok(fs.existsSync(path.join(__dirname, '../app/Dockerfile')), 'Dockerfile must exist');
 assert.ok(fs.existsSync(path.join(__dirname, '../app/app/page.tsx')), 'Next.js page.tsx must exist');
+assert.ok(fs.existsSync(path.join(__dirname, '../app/app/api/health/route.ts')), 'Health check route.ts must exist');
 
 console.log('✅ Automated Next.js tests passed successfully!');
