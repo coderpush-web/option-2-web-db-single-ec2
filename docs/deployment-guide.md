@@ -22,7 +22,6 @@ All CloudFormation files reside under `infra/`:
 
 ```text
 infra/
-├── deploy.sh                # Multi-stack deployment script
 ├── environments/
 │   ├── dev.json             # Environment parameters for Development
 │   └── prod.json            # Environment parameters for Production
@@ -65,9 +64,9 @@ Under **Settings** -> **Secrets and variables** -> **Actions**:
 ### Automated Workflow Stages:
 1. **Application Testing & Linting:** Runs unit tests and validates CloudFormation syntax with `cfn-lint`.
 2. **Docker Build & Push to ECR:** Multi-stage Docker build, pushed to Amazon ECR with tags `dev-latest` (on `dev`) or `latest` (on `main`).
-3. **Infrastructure Deployment:** Executes `deploy.sh` to update CloudFormation stacks.
+3. **Infrastructure Deployment:** Triggers GitHub Actions CD (`deploy.yml`) to update CloudFormation stacks.
 4. **Remote Container Reload via SSM:**
-   After pushing the image, `deploy.sh` queries the EC2 instance ID and runs:
+   After pushing the image, GitHub Actions CD queries the EC2 instance ID and runs:
    ```bash
    aws ssm send-command \
      --instance-ids "$INSTANCE_ID" \
@@ -78,7 +77,7 @@ Under **Settings** -> **Secrets and variables** -> **Actions**:
 
 ---
 
-## 5. Manual Deployment via AWS CLI & `deploy.sh`
+## 5. Manual Deployment via AWS CLI
 
 ### Step 1: Build and Push Docker Image to ECR
 

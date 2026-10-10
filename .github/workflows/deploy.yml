@@ -79,6 +79,78 @@ jobs:
         run: |
           echo "🚀 Starting CloudFormation infrastructure deployment for $ENV_NAME environment..."
           cd infra
-          chmod +x deploy.sh
-          ./deploy.sh "$ENV_NAME" "$IMAGE_TAG"
+
+          echo "1. Deploying Network Module ($ENV_NAME-network)..."
+          aws cloudformation deploy \
+            --template-file modules/vpc-subnets.yaml \
+            --stack-name "$ENV_NAME-network" \
+            --parameter-overrides EnvironmentName="$ENV_NAME" \
+            --no-fail-on-empty-changeset \
+            --region "$AWS_REGION"
+
+          echo "2. Deploying Security Groups Module ($ENV_NAME-security-groups)..."
+          aws cloudformation deploy \
+            --template-file modules/security-groups.yaml \
+            --stack-name "$ENV_NAME-security-groups" \
+            --parameter-overrides EnvironmentName="$ENV_NAME" \
+            --no-fail-on-empty-changeset \
+            --region "$AWS_REGION"
+
+          echo "3. Deploying IAM SSM & ECR Module ($ENV_NAME-iam)..."
+          aws cloudformation deploy \
+            --template-file modules/iam-roles.yaml \
+            --stack-name "$ENV_NAME-iam" \
+            --parameter-overrides EnvironmentName="$ENV_NAME" \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset \
+            --region "$AWS_REGION"
+
+          echo "4. Deploying Application Compute Stack ($ENV_NAME-app)..."
+          PARAM_ARGS="EnvironmentName=$ENV_NAME ImageTag=$IMAGE_TAG"
+          if [ -f "environments/$ENV_NAME.json" ]; then
+            EXTRA_PARAMS=$(python3 -c "
+          import json
+          try:
+              with open('environments/$ENV_NAME.json') as f:
+                  d = json.load(f).get('Parameters', {})
+              d.pop('ImageTag', None)
+              print(' '.join(f'{k}={v}' for k, v in d.items()))
+          except Exception:
+              pass
+          " 2>/dev/null || true)
+            if [ -n "$EXTRA_PARAMS" ]; then
+              PARAM_ARGS="$EXTRA_PARAMS ImageTag=$IMAGE_TAG"
+            fi
+          fi
+
+          aws cloudformation deploy \
+            --template-file modules/app.yaml \
+            --stack-name "$ENV_NAME-app" \
+            --parameter-overrides $PARAM_ARGS \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset \
+            --region "$AWS_REGION"
+
+          echo "5. Reloading Docker container on EC2 via SSM ($ENV_NAME-web-sqlite-server)..."
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=$ENV_NAME-web-sqlite-server" "Name=instance-state-name,Values=running" \
+            --region "$AWS_REGION" \
+            --query "Reservations[0].Instances[0].InstanceId" \
+            --output text 2>/dev/null || true)
+          if [ -n "$INSTANCE_ID" ] && [ "$INSTANCE_ID" != "None" ]; then
+            aws ssm send-command \
+              --instance-ids "$INSTANCE_ID" \
+              --document-name "AWS-RunShellScript" \
+              --parameters 'commands=["systemctl restart react-webapp"]' \
+              --region "$AWS_REGION" >/dev/null 2>&1 || true
+            echo "Sent reload command to instance $INSTANCE_ID via AWS SSM."
+          fi
+
+          echo "=== CloudFormation Stack Outputs ==="
+          aws cloudformation describe-stacks \
+            --stack-name "$ENV_NAME-app" \
+            --region "$AWS_REGION" \
+            --query "Stacks[0].Outputs[*].[OutputKey,OutputValue]" \
+            --output table 2>/dev/null || true
+
           echo "✅ CloudFormation deployment completed successfully!"
