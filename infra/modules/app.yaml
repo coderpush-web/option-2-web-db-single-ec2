@@ -43,11 +43,16 @@ Resources:
         Fn::ImportValue: !Sub '${EnvironmentName}-PublicSubnetId'
       SecurityGroupIds:
         - Fn::ImportValue: !Sub '${EnvironmentName}-WebSecurityGroupId'
+      MetadataOptions:
+        HttpTokens: required
+        HttpPutResponseHopLimit: 1
+        HttpEndpoint: enabled
       BlockDeviceMappings:
         - DeviceName: /dev/xvda
           Ebs:
             VolumeSize: !Ref VolumeSize
             VolumeType: gp3
+            Encrypted: true
             DeleteOnTermination: true
       UserData:
         Fn::Base64: !Sub |
