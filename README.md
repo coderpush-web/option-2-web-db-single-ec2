@@ -5,11 +5,14 @@ Independent infrastructure and application source code for **Option 2: Web Appli
 ## 1. Directory Structure (File Structure)
 ```text
 .
-├── .github/workflows/ci-cd.yml   # CI/CD Pipeline (test code, lint CloudFormation, auto-deploy)
+├── .github/workflows/
+│   ├── ci-app.yml       # CI: Test Application & Build Check
+│   ├── ci-infra.yml     # CI: Lint CloudFormation Templates
+│   ├── build-ecr.yml    # CD: Build Docker Image & Push to Amazon ECR
+│   └── deploy.yml       # CD: Deploy Infrastructure via CloudFormation
 ├── app/                          # Standalone web application (Next.js / Node.js)
 ├── docs/                         # Technical documentation (Deployment, Operations, Architecture)
 ├── infra/                        # AWS CloudFormation Infrastructure-as-Code
-│   ├── cloudformation.yaml       # Consolidated CloudFormation template
 │   ├── modules/                  # Modular templates (app.yaml, vpc-subnets.yaml, etc.)
 │   ├── environments/             # Environment parameters for dev & prod
 │   └── architecture_diagram.png  # Diagram-as-Code architecture diagram
@@ -27,15 +30,6 @@ Independent infrastructure and application source code for **Option 2: Web Appli
 | **1-Year Savings Plan (1-Yr Commitment)** | $19.13 / mo | $9.15 / mo | **$28.28 / mo** *(28% savings)* | ~714,000 VND |
 | **3-Year Savings Plan (3-Yr Commitment)** | $12.13 / mo | $9.15 / mo | **$21.28 / mo** *(46% savings)* | ~537,000 VND |
 | **Spot Instance (Dev/Test Only)** | $9.07 / mo | $9.15 / mo | **$18.22 / mo** *(Not recommended for stateful DB)* | ~460,000 VND |
-
-<!-- INFRACOST_START -->
-### 💵 Automated CloudFormation Cost Scan (Infracost CI/CD Output)
-*Scan timestamp: Sat Oct 10 09:54:45 UTC 2026*
-
-```text
-No costed resources detected.
-```
-<!-- INFRACOST_END -->
 
 ## 3. Architecture Overview
 ![Architecture](infra/architecture_diagram.png)

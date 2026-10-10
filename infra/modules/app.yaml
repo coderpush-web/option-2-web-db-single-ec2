@@ -189,6 +189,9 @@ Resources:
         - Fn::ImportValue: !Sub '${EnvironmentName}-PublicSubnet2Id'
       SecurityGroups:
         - Fn::ImportValue: !Sub '${EnvironmentName}-ALBSecurityGroupId'
+      LoadBalancerAttributes:
+        - Key: routing.http.drop_invalid_header_fields.enabled
+          Value: 'true'
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-opt2-alb'
@@ -252,6 +255,9 @@ Resources:
               OriginProtocolPolicy: http-only
               OriginKeepaliveTimeout: 5
               OriginReadTimeout: 30
+            OriginCustomHeaders:
+              - HeaderName: 'X-CloudFront-Origin-Verify'
+                HeaderValue: !Sub '${EnvironmentName}-secure-origin-${AWS::AccountId}'
         DefaultCacheBehavior:
           TargetOriginId: ALBOrigin
           ViewerProtocolPolicy: redirect-to-https

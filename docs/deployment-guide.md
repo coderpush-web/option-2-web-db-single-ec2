@@ -22,7 +22,6 @@ All CloudFormation files reside under `infra/`:
 
 ```text
 infra/
-├── cloudformation.yaml      # Unified CloudFormation template
 ├── deploy.sh                # Multi-stack deployment script
 ├── environments/
 │   ├── dev.json             # Environment parameters for Development
@@ -51,14 +50,17 @@ Configuration files are located in `infra/environments/dev.json` and `infra/envi
 
 ## 4. Automated Deployment via GitHub Actions (CI/CD)
 
-The pipeline is defined in `.github/workflows/ci-cd.yml`.
+The repository features a modular CI/CD pipeline split into 4 focused GitHub Actions workflows:
+- `.github/workflows/ci-app.yml`: Application testing and validation (`test/test_api.js`).
+- `.github/workflows/ci-infra.yml`: Infrastructure validation and linting (`cfn-lint`).
+- `.github/workflows/build-ecr.yml`: Builds Docker container image and pushes to Amazon ECR.
+- `.github/workflows/deploy.yml`: Deploys CloudFormation stacks and triggers instance refresh.
 
 ### Required GitHub Repository Secrets:
 Under **Settings** -> **Secrets and variables** -> **Actions**:
 - `AWS_ACCESS_KEY_ID`: IAM user/role access key.
 - `AWS_SECRET_ACCESS_KEY`: IAM user/role secret access key.
 - `AWS_REGION`: AWS Region (default: `ap-southeast-1`).
-- `INFRACOST_API_KEY`: *(Optional)* API key for Infracost cost analysis.
 
 ### Automated Workflow Stages:
 1. **Application Testing & Linting:** Runs unit tests and validates CloudFormation syntax with `cfn-lint`.
