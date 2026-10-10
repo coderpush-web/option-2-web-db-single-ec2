@@ -1,4 +1,4 @@
-name: CI - Infrastructure Lint
+name: CI - Infrastructure, Security & Lint
 
 on:
   push:
@@ -15,20 +15,43 @@ permissions:
   contents: read
 
 jobs:
-  test-and-lint-infra:
-    name: Test & Lint Infrastructure
+  security-and-lint-infra:
+    name: Security, Checkov & cfn-lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Setup Python for cfn-lint
+      - name: Enforce OIDC Security (No Static Keys)
+        run: |
+          echo "Verifying no static AWS credentials in CI/CD workflows..."
+          if grep -rn --exclude="ci-infra.yml" --exclude="security-compliance.yml" "AWS_ACCESS_KEY_ID" .github/workflows/; then
+            echo "❌ Static AWS credentials detected! OIDC only is permitted."
+            exit 1
+          fi
+          echo "✅ OIDC compliance verified."
+
+      - name: Secret Scan with GitLeaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Lint CloudFormation Modules & Templates
+      - name: Lint CloudFormation (cfn-lint)
         run: |
           pip install cfn-lint
           cfn-lint --non-zero-exit-code error infra/modules/*.yaml
           echo "✅ CloudFormation templates linted successfully!"
+
+      - name: Run Checkov IaC Security Scanner
+        run: |
+          pip install checkov
+          checkov --config-file .checkov.yaml
+          echo "✅ Checkov scan completed!"

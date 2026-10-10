@@ -1,0 +1,60 @@
+version: '3.8'
+
+# Docker Compose for Option 2: Hosting Web Application + Local DB on Single EC2
+# Repository: option-2-web-db-single-ec2
+
+services:
+  web:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: opt2-web-app
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+      - PORT=80
+      - AUTH_SECRET=${AUTH_SECRET:?AUTH_SECRET must be set in .env}
+      - AUTH_URL=${AUTH_URL:-http://localhost:3000}
+      - SQLITE_DB_PATH=/app/data/app.db
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@db:5432/${POSTGRES_DB:-dashboard}
+    volumes:
+      - sqlite_data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal-bridge
+
+  db:
+    image: postgres:16-alpine
+    container_name: opt2-postgres-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-dashboard}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Bound strictly to localhost loopback to prevent external exposure
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - internal-bridge
+
+volumes:
+  sqlite_data:
+    driver: local
+  postgres_data:
+    driver: local
+
+networks:
+  internal-bridge:
+    driver: bridge

@@ -1,0 +1,47 @@
+# LicenseCheck Configuration
+# Enforces approved open source licenses (awslabs standard)
+[tool.licensecheck]
+zero = true
+format = "ansi"
+
+# Approved Permissive Licenses
+only_licenses = [
+    "MIT",
+    "MIT License",
+    "Apache-2.0",
+    "Apache Software License",
+    "Apache License 2.0",
+    "BSD",
+    "BSD License",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "ISC License",
+    "Python Software Foundation License",
+    "Unlicense",
+    "CC0-1.0",
+    "Public Domain",
+    "Boost Software License",
+    "0BSD"
+]
+
+# Blocked Copyleft/Viral Licenses (Violates Proprietary & SaaS policies)
+fail_licenses = [
+    "GPL",
+    "GPLv2",
+    "GPLv3",
+    "GPL-2.0",
+    "GPL-3.0",
+    "AGPL",
+    "AGPLv3",
+    "AGPL-3.0",
+    "LGPL",
+    "SSPL"
+]
+
+ignore_licenses = [
+    "Mozilla Public License 2.0",
+    "MPL-2.0"
+]
+
+ignore_packages = []

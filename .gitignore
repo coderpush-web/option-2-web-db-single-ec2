@@ -9,3 +9,16 @@ out/
 build/
 *.tsbuildinfo
 next-env.d.ts
+
+# DevSecOps - Generated files & caches (awslabs standard)
+.ash/
+ash_output/
+ferret-sast-report.json
+.eslintcache
+
+# Local SQLite databases
+app/data/
+data/
+*.db
+*.db-wal
+*.db-shm

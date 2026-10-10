@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+commit_msg_file="$1"
+
+if [ ! -f "$commit_msg_file" ]; then
+  echo "❌ [commit-msg] Commit message file not found: $commit_msg_file"
+  exit 1
+fi
+
+commit_msg=$(head -n 1 "$commit_msg_file")
+
+if echo "$commit_msg" | grep -Eq "^Merge "; then
+  exit 0
+fi
+
+pattern="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9_-]+\))?!?: .{1,100}$"
+
+if ! echo "$commit_msg" | grep -Eq "$pattern"; then
+  echo ""
+  echo "❌ [commit-msg] FAILED: Invalid commit message format!"
+  echo "   Current message: \"$commit_msg\""
+  echo ""
+  echo "Commit message must follow Conventional Commits:"
+  echo "  <type>(<scope>?): <subject>"
+  echo ""
+  echo "Allowed types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+  echo "Examples:"
+  echo "  feat(infra): add CloudFront origin header verify"
+  echo "  fix(db): update postgres connection configuration"
+  echo "  chore(security): add gitleaks and checkov to pre-commit hook"
+  echo "  docs(agents): update AGENTS.md requirements and pricing"
+  echo ""
+  exit 1
+fi
+
+echo "✅ [commit-msg] Commit message verified: \"$commit_msg\""
+exit 0

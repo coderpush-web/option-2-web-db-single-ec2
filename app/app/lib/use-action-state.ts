@@ -12,7 +12,7 @@ export function useActionState<State, Payload = FormData>(
   const formAction = (payload: Payload) => {
     startTransition(async () => {
       try {
-        const result = await action(state, payload);
+        const result = await action(state as Awaited<State>, payload);
         if (result !== undefined && result !== null) {
           setState(result);
         }
@@ -28,5 +28,5 @@ export function useActionState<State, Payload = FormData>(
     });
   };
 
-  return [state !== undefined && state !== null ? state : initialState, formAction, isPending];
+  return [(state !== undefined && state !== null ? state : initialState) as Awaited<State>, formAction, isPending];
 }

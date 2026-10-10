@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+set -e
+
+echo "🔍 [pre-commit] Starting automated quality, security, and infrastructure checks (AWS Labs Standard)..."
+
+# 1. Branch protection check (no direct commits to main/master)
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
+  echo "⚠️ [pre-commit] WARNING: Direct commit to protected branch '$CURRENT_BRANCH'! Ensure you intend to commit directly or use a feature branch."
+fi
+
+# 2. Check for large files (> 100MB)
+echo "  [1/8] Checking for files larger than 100MB (check-added-large-files)..."
+LARGE_FILES=$(git diff --cached --name-only --diff-filter=A 2>/dev/null | while read -r f; do
+  if [ -f "$f" ]; then
+    size=$(wc -c <"$f" 2>/dev/null || echo 0)
+    if [ "$size" -gt 104857600 ]; then
+      echo "$f"
+    fi
+  fi
+done)
+
+if [ -n "$LARGE_FILES" ]; then
+  echo "❌ [pre-commit] FAILED: Files larger than 100MB detected:"
+  echo "$LARGE_FILES"
+  exit 1
+fi
+echo "  ✅ File size check passed."
+
+# 3. GitLeaks & Secret detection
+echo "  [2/8] Running GitLeaks secret detection..."
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --verbose || {
+    echo "❌ [pre-commit] FAILED: GitLeaks detected exposed secrets or credentials!"
+    exit 1
+  }
+  echo "  ✅ GitLeaks scan passed: No exposed secrets detected."
+else
+  echo "  ⚠️ gitleaks binary not found, fallback to regex check..."
+  if git grep -E -I "AKIA[0-9A-Z]{16}|BEGIN (RSA|EC|OPENSSH) PRIVATE KEY" -- ':!*.sample' ':!.git*' ':!.githooks*' 2>/dev/null; then
+    echo "❌ [pre-commit] FAILED: Potential static secret or private key detected!"
+    exit 1
+  fi
+  echo "  ✅ Regex secret scan passed."
+fi
+
+# 4. Sensitive Data & PII Guard (Ferret Scan)
+echo "  [3/8] Running Sensitive Data & PII scan..."
+if command -v ferret-scan >/dev/null 2>&1; then
+  ferret-scan --config .devsecops/ferret-scan.yaml . || {
+    echo "⚠️ [pre-commit] Ferret scan found potential sensitive data."
+  }
+  echo "  ✅ Ferret scan completed."
+else
+  echo "  ℹ️ ferret-scan not installed locally; will run in GitHub Actions CI/CD."
+fi
+
+# 5. Checkov Infrastructure as Code (IaC) security scan
+echo "  [4/8] Running Checkov IaC security scanner..."
+if command -v checkov >/dev/null 2>&1; then
+  checkov --config-file .checkov.yaml || {
+    echo "⚠️ [pre-commit] Checkov scan completed with warnings (soft-fail enabled)."
+  }
+  echo "  ✅ Checkov scan completed."
+else
+  echo "  ⚠️ checkov not installed on this machine, skipping."
+fi
+
+# 6. JSON validation for environment configs
+echo "  [5/8] Validating environment JSON configuration files..."
+for f in infra/environments/*.json; do
+  if [ -f "$f" ]; then
+    python3 -m json.tool "$f" > /dev/null || {
+      echo "❌ [pre-commit] FAILED: Invalid JSON syntax in $f"
+      exit 1
+    }
+  fi
+done
+echo "  ✅ JSON configs valid."
+
+# 7. CloudFormation Linting
+echo "  [6/8] Running CloudFormation linting (cfn-lint)..."
+if command -v cfn-lint >/dev/null 2>&1; then
+  cfn-lint --non-zero-exit-code error infra/modules/*.yaml || {
+    echo "❌ [pre-commit] FAILED: cfn-lint reported errors in infra/modules/*.yaml"
+    exit 1
+  }
+  echo "  ✅ CloudFormation templates valid."
+else
+  echo "  ⚠️ cfn-lint not installed on this machine, skipping."
+fi
+
+# 8. Automated Tests
+echo "  [7/8] Running automated tests (test/test_api.js)..."
+if [ -f "test/test_api.js" ]; then
+  node test/test_api.js || {
+    echo "❌ [pre-commit] FAILED: test/test_api.js failed!"
+    exit 1
+  }
+  echo "  ✅ Automated tests passed."
+fi
+
+# 9. Git workflow OIDC validation
+echo "  [8/8] Checking CI/CD workflows for OIDC compliance (no static keys)..."
+if grep -rn --exclude="ci-infra.yml" --exclude="security-compliance.yml" "AWS_ACCESS_KEY_ID" .github/workflows/ 2>/dev/null; then
+  echo "❌ [pre-commit] FAILED: Static AWS access keys detected in .github/workflows/! OIDC only is permitted."
+  exit 1
+fi
+echo "  ✅ CI/CD workflow security verified."
+
+echo "🎉 [pre-commit] All pre-commit checks passed successfully! Proceeding with commit."
+exit 0

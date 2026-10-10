@@ -1,0 +1,7 @@
+framework:
+  - cloudformation
+directory:
+  - infra/modules
+compact: true
+quiet: true
+soft-fail: true

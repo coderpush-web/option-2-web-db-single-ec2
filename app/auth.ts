@@ -4,29 +4,16 @@ import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import type { User } from '@/app/lib/definitions';
 import { authConfig } from './auth.config';
-import { users as placeholderUsers } from '@/app/lib/placeholder-data';
-import { sqlClient } from '@/app/lib/db';
+import { db } from '@/app/lib/db';
 
 async function getUser(email: string): Promise<User | undefined> {
   try {
-    if (sqlClient) {
-      const user = await sqlClient`SELECT * FROM users WHERE email=${email}`;
-      if (user && user.length > 0) return user[0];
-    }
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
+    return user;
   } catch (error) {
-    // Database might be connecting or offline, fallback to placeholder
+    console.error('Failed to query user from SQLite database:', error);
+    return undefined;
   }
-
-  const found = placeholderUsers.find((u) => u.email === email);
-  if (found) {
-    return {
-      id: found.id,
-      name: found.name,
-      email: found.email,
-      password: await bcrypt.hash(found.password, 10),
-    };
-  }
-  return undefined;
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({

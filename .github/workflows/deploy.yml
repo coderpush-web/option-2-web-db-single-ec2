@@ -59,20 +59,14 @@ jobs:
           echo "ENV_NAME=$ENV_NAME" >> $GITHUB_OUTPUT
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Configure AWS Credentials
-        if: env.AWS_ACCESS_KEY_ID != ''
+      - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
 
       - name: Deploy Infrastructure Stacks via CloudFormation
-        if: env.AWS_ACCESS_KEY_ID != ''
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           ENV_NAME: ${{ steps.vars.outputs.ENV_NAME }}
           IMAGE_TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
           AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
@@ -138,12 +132,14 @@ jobs:
             --query "Reservations[0].Instances[0].InstanceId" \
             --output text 2>/dev/null || true)
           if [ -n "$INSTANCE_ID" ] && [ "$INSTANCE_ID" != "None" ]; then
+            ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null || true)
+            IMAGE_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ENV_NAME}-option-2-web-app:${IMAGE_TAG}"
             aws ssm send-command \
               --instance-ids "$INSTANCE_ID" \
               --document-name "AWS-RunShellScript" \
-              --parameters 'commands=["systemctl restart react-webapp"]' \
+              --parameters "commands=[\"aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com\", \"docker pull $IMAGE_URI\", \"systemctl restart react-webapp\"]" \
               --region "$AWS_REGION" >/dev/null 2>&1 || true
-            echo "Sent reload command to instance $INSTANCE_ID via AWS SSM."
+            echo "Sent image pull and reload command to instance $INSTANCE_ID via AWS SSM."
           fi
 
           echo "=== CloudFormation Stack Outputs ==="

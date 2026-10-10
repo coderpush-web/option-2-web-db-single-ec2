@@ -26,13 +26,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
 
       - name: Install Dependencies
         run: |
           cd app
-          npm install
+          npm ci
 
       - name: Run Automated Unit & Integration Tests
         run: |
           node test/test_api.js
           echo "✅ Automated tests passed successfully!"
+
+      - name: Validate Next.js Build
+        run: |
+          cd app
+          npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1

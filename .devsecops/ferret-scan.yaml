@@ -1,0 +1,15 @@
+# Ferret Scan configuration for AWS Web & DB Architecture
+# Sourced from awslabs/devsecops-pre-commit-and-cicd-template
+default:
+  format: text
+  confidence_levels: medium,high
+  checks: EMAIL,INTELLECTUAL_PROPERTY,IP_ADDRESS,SECRETS,CLOUD_RESOURCES
+  verbose: true
+  no_color: false
+  recursive: true
+  description: "DevSecOps scan detecting sensitive PII, internal IPs, and credentials"
+  validators:
+    intellectual_property:
+      internal_urls:
+        - "http[s]?:\\/\\/.*\\.corp\\..*"
+        - "http[s]?:\\/\\/.*\\.internal\\..*"

@@ -171,7 +171,8 @@ Resources:
       GroupDescription: Security group for VPC Endpoints (ECR, CloudWatch Logs)
       VpcId: !Ref VPC
       SecurityGroupIngress:
-        - IpProtocol: tcp
+        - Description: 'Allow HTTPS inbound for VPC Endpoints from within VPC'
+          IpProtocol: tcp
           FromPort: 443
           ToPort: 443
           CidrIp: !Ref VpcCIDR
@@ -190,6 +191,7 @@ Resources:
       PrivateDnsEnabled: true
       SubnetIds:
         - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
       SecurityGroupIds:
         - !Ref VPCEndpointSecurityGroup
       Tags:
@@ -207,6 +209,7 @@ Resources:
       PrivateDnsEnabled: true
       SubnetIds:
         - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
       SecurityGroupIds:
         - !Ref VPCEndpointSecurityGroup
       Tags:
@@ -238,6 +241,7 @@ Resources:
       PrivateDnsEnabled: true
       SubnetIds:
         - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
       SecurityGroupIds:
         - !Ref VPCEndpointSecurityGroup
       Tags:
@@ -255,11 +259,66 @@ Resources:
       PrivateDnsEnabled: true
       SubnetIds:
         - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
       SecurityGroupIds:
         - !Ref VPCEndpointSecurityGroup
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-secretsmanager-vpce'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  SSMEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ssm'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-ssm-vpce'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  SSMMessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ssmmessages'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-ssmmessages-vpce'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  EC2MessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ec2messages'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-ec2messages-vpce'
         - Key: Environment
           Value: !Ref EnvironmentName
 

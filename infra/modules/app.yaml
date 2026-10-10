@@ -32,8 +32,14 @@ Parameters:
     Default: ''
     Description: Optional email address to receive CloudWatch Alarms SNS notifications
 
+  CertificateArn:
+    Type: String
+    Default: ''
+    Description: ACM Certificate ARN for HTTPS ALB listener (*.png261.dev)
+
 Conditions:
   IsProd: !Equals [!Ref EnvironmentName, 'prod']
+  HasCertificateArn: !Not [!Equals [!Ref CertificateArn, '']]
   HasAlertEmail: !Not [!Equals [!Ref AlertEmail, '']]
 
 Resources:
@@ -67,6 +73,22 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
+  WebAuthSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${EnvironmentName}-web-auth-secret'
+      Description: !Sub 'NextAuth session encryption key for ${EnvironmentName} web app'
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: 'auth_secret'
+        PasswordLength: 32
+        ExcludeCharacters: '"@/\'
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-web-auth-secret'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
   WebServerInstance:
     Type: AWS::EC2::Instance
     Properties:
@@ -88,7 +110,7 @@ Resources:
             VolumeSize: !Ref VolumeSize
             VolumeType: gp3
             Encrypted: true
-            DeleteOnTermination: true
+            DeleteOnTermination: false
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
@@ -99,6 +121,8 @@ Resources:
           usermod -aG docker ec2-user
 
           mkdir -p /var/data/sqlite
+          chown -R 1001:1001 /var/data/sqlite
+          chmod 700 /var/data/sqlite
 
           AWS_REGION="${AWS::Region}"
           ACCOUNT_ID="${AWS::AccountId}"
@@ -114,6 +138,22 @@ Resources:
             docker pull "$IMAGE_URI" && break || sleep 5
           done
 
+          echo "Fetching application secrets from AWS Secrets Manager..."
+          SECRET_VAL=$(aws secretsmanager get-secret-value \
+            --secret-id "${EnvironmentName}-web-auth-secret" \
+            --region "${AWS::Region}" \
+            --query SecretString \
+            --output text 2>/dev/null || true)
+          AUTH_SECRET=$(echo "$SECRET_VAL" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('auth_secret', ''))" 2>/dev/null || echo "$SECRET_VAL")
+
+          mkdir -p /etc
+          echo "APP_ENV=${EnvironmentName}" > /etc/react-webapp.env
+          echo "PORT=80" >> /etc/react-webapp.env
+          echo "AUTH_SECRET=$AUTH_SECRET" >> /etc/react-webapp.env
+          echo "AUTH_URL=http://localhost:3000" >> /etc/react-webapp.env
+          echo "SQLITE_DB_PATH=/app/data/app.db" >> /etc/react-webapp.env
+          chmod 600 /etc/react-webapp.env
+
           cat << 'SVC' > /etc/systemd/system/react-webapp.service
           [Unit]
           Description=Dockerized React Web App with SQLite
@@ -126,12 +166,12 @@ Resources:
           ExecStartPre=-/usr/bin/docker stop react-webapp
           ExecStartPre=-/usr/bin/docker rm react-webapp
           ExecStart=/usr/bin/docker run --name react-webapp -p 80:80 \
+            --env-file /etc/react-webapp.env \
             --log-driver=awslogs \
             --log-opt awslogs-region=${AWS::Region} \
             --log-opt awslogs-group=/aws/ec2/${EnvironmentName}-option-2-webapp \
             --log-opt awslogs-create-group=true \
             -v /var/data/sqlite:/app/data \
-            -e APP_ENV=${EnvironmentName} -e PORT=80 \
             ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EnvironmentName}-option-2-web-app:${ImageTag}
           ExecStop=/usr/bin/docker stop react-webapp
 
@@ -205,6 +245,64 @@ Resources:
       Port: 80
       Protocol: HTTP
       DefaultActions:
+        !If
+          - HasCertificateArn
+          - - Type: redirect
+              RedirectConfig:
+                Protocol: HTTPS
+                Port: '443'
+                StatusCode: HTTP_301
+          - - Type: fixed-response
+              FixedResponseConfig:
+                StatusCode: '403'
+                ContentType: 'text/plain'
+                MessageBody: 'Direct access to ALB is forbidden. Please access via CloudFront distribution.'
+
+  ALBHeaderRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref ALBListener
+      Priority: 10
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: 'X-CloudFront-Origin-Verify'
+            Values:
+              - !Sub '${EnvironmentName}-secure-origin-${AWS::AccountId}'
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+
+  ALBHttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: HasCertificateArn
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            StatusCode: '403'
+            ContentType: 'text/plain'
+            MessageBody: 'Direct access to ALB is forbidden. Please access via CloudFront distribution.'
+
+  ALBHttpsHeaderRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Condition: HasCertificateArn
+    Properties:
+      ListenerArn: !Ref ALBHttpsListener
+      Priority: 10
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: 'X-CloudFront-Origin-Verify'
+            Values:
+              - !Sub '${EnvironmentName}-secure-origin-${AWS::AccountId}'
+      Actions:
         - Type: forward
           TargetGroupArn: !Ref ALBTargetGroup
 
@@ -215,7 +313,7 @@ Resources:
         Comment: !Sub '${EnvironmentName} Option 2 Web Distribution'
         Enabled: true
         HttpVersion: http2and3
-        PriceClass: PriceClass_All
+        PriceClass: PriceClass_200
         Origins:
           - Id: ALBOrigin
             DomainName: !GetAtt ApplicationLoadBalancer.DNSName

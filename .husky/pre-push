@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -e
+
+echo "🚀 [pre-push] Running pre-push integration validation..."
+
+if [ -f "test/test_api.js" ]; then
+  node test/test_api.js
+fi
+
+if grep -rn --exclude="ci-infra.yml" --exclude="security-compliance.yml" "AWS_ACCESS_KEY_ID" .github/workflows/ 2>/dev/null; then
+  echo "❌ [pre-push] FAILED: Static AWS access keys detected in .github/workflows/!"
+  exit 1
+fi
+
+if command -v cfn-lint >/dev/null 2>&1; then
+  cfn-lint --non-zero-exit-code error infra/modules/*.yaml
+fi
+
+echo "✅ [pre-push] Validation successful! Push allowed."
+exit 0

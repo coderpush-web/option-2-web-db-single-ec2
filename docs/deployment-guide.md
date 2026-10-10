@@ -55,10 +55,9 @@ The repository features a modular CI/CD pipeline split into 4 focused GitHub Act
 - `.github/workflows/build-ecr.yml`: Builds Docker container image and pushes to Amazon ECR.
 - `.github/workflows/deploy.yml`: Deploys CloudFormation stacks and triggers instance refresh.
 
-### Required GitHub Repository Secrets:
+### Required GitHub Repository Secrets (AWS OIDC Only):
 Under **Settings** -> **Secrets and variables** -> **Actions**:
-- `AWS_ACCESS_KEY_ID`: IAM user/role access key.
-- `AWS_SECRET_ACCESS_KEY`: IAM user/role secret access key.
+- `AWS_ROLE_TO_ASSUME`: IAM Role ARN configured for GitHub Actions OIDC (e.g. `arn:aws:iam::<ACCOUNT_ID>:role/github-actions-deploy-role`).
 - `AWS_REGION`: AWS Region (default: `ap-southeast-1`).
 
 ### Automated Workflow Stages:

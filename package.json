@@ -1,0 +1,12 @@
+{
+  "name": "option-2-web-db-single-ec2",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "test": "node test/test_api.js"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

@@ -5,7 +5,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { signIn, auth } from '@/auth';
 import { AuthError } from 'next-auth';
-import { sqlClient } from './db';
+import { db } from './db';
+import crypto from 'crypto';
 
 const FormSchema = z.object({
   id: z.string(),
@@ -63,12 +64,11 @@ export async function createInvoice(prevState: State, formData: FormData) {
 
   // Insert data into the database
   try {
-    if (sqlClient) {
-      await sqlClient`
-        INSERT INTO invoices (customer_id, amount, status, date)
-        VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
-      `;
-    }
+    const id = crypto.randomUUID();
+    db.prepare(`
+      INSERT INTO invoices (id, customer_id, amount, status, date)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(id, customerId, amountInCents, status, date);
   } catch (error) {
     console.error('Failed to create invoice in database:', error);
     return {
@@ -110,13 +110,11 @@ export async function updateInvoice(
   const amountInCents = amount * 100;
 
   try {
-    if (sqlClient) {
-      await sqlClient`
-        UPDATE invoices
-        SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
-        WHERE id = ${id}
-      `;
-    }
+    db.prepare(`
+      UPDATE invoices
+      SET customer_id = ?, amount = ?, status = ?
+      WHERE id = ?
+    `).run(customerId, amountInCents, status, id);
   } catch (error) {
     console.error('Failed to update invoice in database:', error);
     return { message: 'Database Error: Failed to Update Invoice.' };
@@ -133,9 +131,7 @@ export async function deleteInvoice(id: string) {
   }
 
   try {
-    if (sqlClient) {
-      await sqlClient`DELETE FROM invoices WHERE id = ${id}`;
-    }
+    db.prepare('DELETE FROM invoices WHERE id = ?').run(id);
   } catch (error) {
     console.error('Failed to delete invoice in database:', error);
   }
