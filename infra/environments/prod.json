@@ -3,7 +3,6 @@
     "EnvironmentName": "prod",
     "InstanceType": "t3.small",
     "VolumeSize": "30",
-    "DomainName": "png261.dev",
     "SubdomainName": "opt2.png261.dev"
   }
 }

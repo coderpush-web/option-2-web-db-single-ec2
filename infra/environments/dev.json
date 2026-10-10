@@ -3,7 +3,6 @@
     "EnvironmentName": "dev",
     "InstanceType": "t3.micro",
     "VolumeSize": "20",
-    "DomainName": "png261.dev",
     "SubdomainName": "opt2-dev.png261.dev"
   }
 }

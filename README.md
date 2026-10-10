@@ -40,7 +40,7 @@ No costed resources detected.
 ### Điểm nổi bật của kiến trúc:
 - **CloudFront CDN Edge Caching:** Caching tối ưu cho static assets (`/_next/static/*`, `/static/*`), giảm tải request vào EC2 instance duy nhất, giúp bảo vệ tài nguyên CPU/RAM cho database SQLite chạy cục bộ.
 - **Single EC2 Web + Local Database:** Máy chủ EC2 chạy Dockerized Node.js/Next.js kết hợp database SQLite cục bộ lưu trên ổ đĩa EBS gp3 mã hóa.
-- **Cloudflare Proxy + Custom Domain:** Định tuyến người dùng qua Cloudflare CDN/WAF tới CloudFront endpoint.
+- **AWS-Native Custom Domain:** Định tuyến trực tiếp người dùng qua DNS CNAME (DNS-only) tới Amazon CloudFront Edge & ALB endpoint.
 
 ## 📸 Giao Diện Ứng Dụng Thực Tế (Live Screenshots - Dev & Prod)
 
@@ -50,7 +50,7 @@ No costed resources detected.
 
 > 🚀 **Ghi chú triển khai:**
 > - **Môi trường Dev (`opt2-dev.png261.dev`):** Chạy chế độ debug/development, kết nối cơ sở dữ liệu Dev, phục vụ kiểm thử tính năng mới.
-> - **Môi trường Prod (`opt2.png261.dev`):** Chạy chế độ production tối ưu hóa hiệu năng cao, bảo mật nghiêm ngặt qua Cloudflare SSL/HTTPS.
+> - **Môi trường Prod (`opt2.png261.dev`):** Chạy chế độ production tối ưu hóa hiệu năng cao, bảo mật chuẩn AWS ACM SSL/HTTPS.
 
 
 ## ⚛️ Ứng Dụng React & Quy Trình Đóng Gói Docker / Amazon ECR
@@ -82,15 +82,15 @@ Quy trình tuân thủ nghiêm ngặt chuẩn DevOps hiện đại:
 
 Hạ tầng hỗ trợ ánh xạ tên miền `png261.dev` cho cả môi trường Development và Production:
 
-| Môi trường | Nhánh Git | Subdomain | Loại bản ghi DNS | Giá trị đích (Target) | Proxy Cloudflare |
+| Môi trường | Nhánh Git | Subdomain | Loại bản ghi DNS | Giá trị đích (Target) | Chế độ Proxy |
 | :--- | :--- | :--- | :---: | :--- | :--- |
-| **Development** | `dev` | `opt2-dev.png261.dev` | `CNAME` | `${CloudFrontDistribution.DomainName}` | Bật (Proxied ☁️) |
-| **Production** | `main` | `opt2.png261.dev` | `CNAME` | `${CloudFrontDistribution.DomainName}` | Bật (Proxied ☁️) |
+| **Development** | `dev` | `opt2-dev.png261.dev` | `CNAME` | `${CloudFrontDistribution.DomainName}` | DNS Only (☁️ Tắt / Grey) |
+| **Production** | `main` | `opt2.png261.dev` | `CNAME` | `${CloudFrontDistribution.DomainName}` | DNS Only (☁️ Tắt / Grey) |
 
-> 💡 **Khuyến nghị SSL/HTTPS qua Cloudflare:**
-> Do tên miền `png261.dev` được quản trị Nameserver tại Cloudflare, khi tạo bản ghi `CNAME` với trạng thái **Proxied (Đám mây màu cam ☁️)**:
-> - Cloudflare sẽ tự động cấp chứng chỉ **Universal SSL/TLS miễn phí** (HTTPS xanh).
-> - Tự động kích hoạt CDN caching và bảo vệ chống tấn công DDoS Lớp 7.
+> 💡 **Cấu hình DNS Chuẩn AWS-Native:**
+> Tên miền `png261.dev` được cấu hình bản ghi `CNAME` ở chế độ **DNS Only (Grey cloud ☁️)** trỏ trực tiếp đến Amazon CloudFront Distribution.
+> - Toàn bộ lưu lượng truy cập được phục vụ và cache trực tiếp bởi mạng lưới AWS Edge Locations toàn cầu.
+> - Kết nối bảo mật HTTPS đầu-cuối qua AWS ACM Certificate trên CloudFront.
 
 ## ☁️ Quản Lý Hạ Tầng Native CloudFormation (No State File)
 Hạ tầng sử dụng 100% **AWS CloudFormation Native**:
