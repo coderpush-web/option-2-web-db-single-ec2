@@ -42,7 +42,7 @@ Resources:
       SubnetId:
         Fn::ImportValue: !Sub '${EnvironmentName}-PublicSubnetId'
       SecurityGroupIds:
-        - Fn::ImportValue: !Sub '${EnvironmentName}-WebSecurityGroupId'
+        - Fn::ImportValue: !Sub '${EnvironmentName}-StandaloneWebSecurityGroupId'
       MetadataOptions:
         HttpTokens: required
         HttpPutResponseHopLimit: 1
@@ -87,7 +87,14 @@ Resources:
           Restart=always
           ExecStartPre=-/usr/bin/docker stop react-webapp
           ExecStartPre=-/usr/bin/docker rm react-webapp
-          ExecStart=/usr/bin/docker run --name react-webapp -p 80:80 -v /var/data/sqlite:/app/data -e APP_ENV=${EnvironmentName} -e PORT=80 ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EnvironmentName}-option-2-web-app:${ImageTag}
+          ExecStart=/usr/bin/docker run --name react-webapp -p 80:80 \
+            --log-driver=awslogs \
+            --log-opt awslogs-region=${AWS::Region} \
+            --log-opt awslogs-group=/aws/ec2/${EnvironmentName}-option-2-webapp \
+            --log-opt awslogs-create-group=true \
+            -v /var/data/sqlite:/app/data \
+            -e APP_ENV=${EnvironmentName} -e PORT=80 \
+            ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EnvironmentName}-option-2-web-app:${ImageTag}
           ExecStop=/usr/bin/docker stop react-webapp
 
           [Install]
