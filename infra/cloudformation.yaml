@@ -88,7 +88,6 @@ Resources:
         Fn::Base64: !Sub |
           #!/bin/bash
           set -e
-          dnf update -y
           dnf install -y docker aws-cli
           systemctl enable docker
           systemctl start docker
@@ -290,7 +289,7 @@ Outputs:
     Description: Root Domain Name
     Value: !Ref DomainName
   DnsRecordType:
-    Description: DNS Record Type for Cloudflare / Route 53
+    Description: DNS Record Type
     Value: 'CNAME'
   DnsRecordName:
     Description: DNS Record Name
@@ -298,6 +297,6 @@ Outputs:
   DnsRecordValue:
     Description: DNS Record Value (CloudFront Distribution Target)
     Value: !GetAtt CloudFrontDistribution.DomainName
-  CloudflareProxyGuide:
-    Description: Cloudflare Setup Instructions
-    Value: !Sub 'Add CNAME in Cloudflare: ${SubdomainName} -> ${CloudFrontDistribution.DomainName} with SSL/TLS Full.'
+  DNSSetupGuide:
+    Description: Custom Domain DNS Setup Instructions
+    Value: !Sub 'Add CNAME in DNS: ${SubdomainName} -> ${CloudFrontDistribution.DomainName} (DNS-only / no proxy).'

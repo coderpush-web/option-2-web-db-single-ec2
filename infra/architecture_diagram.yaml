@@ -10,7 +10,7 @@ Diagram:
       Children:
         - AWSCloud
         - CloudFront
-        - CloudflareEdge
+        - DNS
         - User
 
     User:
@@ -18,10 +18,10 @@ Diagram:
       Preset: User
       Title: "User"
 
-    CloudflareEdge:
+    DNS:
       Type: AWS::Diagram::Resource
       Preset: Internet
-      Title: "Cloudflare Proxy (CDN/WAF)\nopt2.png261.dev"
+      Title: "Custom Domain DNS\nopt2.png261.dev"
 
     CloudFront:
       Type: AWS::Diagram::Resource
@@ -83,12 +83,12 @@ Diagram:
 
     VPCEndpoints:
       Type: AWS::EC2::VPCEndpoint
-      Title: "AWS PrivateLink\n(ECR & S3 Endpoints)"
+      Title: "AWS PrivateLink\n(Single-AZ ECR & S3)"
 
   Links:
     - Source: User
       SourcePosition: N
-      Target: CloudflareEdge
+      Target: DNS
       TargetPosition: S
       TargetArrowHead:
         Type: Open
@@ -96,7 +96,7 @@ Diagram:
       Labels:
         SourceLeft:
           Title: "HTTPS:443"
-    - Source: CloudflareEdge
+    - Source: DNS
       SourcePosition: N
       Target: CloudFront
       TargetPosition: S
@@ -105,7 +105,7 @@ Diagram:
       Type: orthogonal
       Labels:
         SourceLeft:
-          Title: "HTTPS:443"
+          Title: "CNAME"
     - Source: CloudFront
       SourcePosition: N
       Target: IGW
