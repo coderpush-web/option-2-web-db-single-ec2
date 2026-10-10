@@ -1,0 +1,73 @@
+Diagram:
+  DefinitionFiles:
+    - Type: URL
+      Url: "https://raw.githubusercontent.com/awslabs/diagram-as-code/main/definitions/definition-for-aws-icons-light.yaml"
+
+  Resources:
+    Canvas:
+      Type: AWS::Diagram::Canvas
+      Direction: vertical
+      Children:
+        - AWSCloud
+        - User
+
+    AWSCloud:
+      Type: AWS::Diagram::Cloud
+      Direction: vertical
+      Preset: AWSCloudNoLogo
+      Align: center
+      Children:
+        - VPC
+
+    VPC:
+      Type: AWS::EC2::VPC
+      Title: "VPC (10.0.0.0/16)"
+      Direction: vertical
+      Children:
+        - PublicSubnet
+      BorderChildren:
+        - Position: S
+          Resource: IGW
+
+    PublicSubnet:
+      Type: AWS::EC2::Subnet
+      Preset: PublicSubnet
+      Title: "Public Subnet (10.0.1.0/24)"
+      Children:
+        - WebInstance
+
+    WebInstance:
+      Type: AWS::EC2::Instance
+      Title: "Next.js + SQLite Instance\n(Local EBS Volume)"
+
+    IGW:
+      Type: AWS::EC2::InternetGateway
+      IconFill:
+        Type: rect
+
+    User:
+      Type: AWS::Diagram::Resource
+      Preset: User
+      Title: "User"
+
+  Links:
+    - Source: User
+      SourcePosition: N
+      Target: IGW
+      TargetPosition: S
+      TargetArrowHead:
+        Type: Open
+      Type: orthogonal
+      Labels:
+        SourceLeft:
+          Title: "HTTPS:443"
+    - Source: IGW
+      SourcePosition: N
+      Target: WebInstance
+      TargetPosition: S
+      TargetArrowHead:
+        Type: Open
+      Type: orthogonal
+      Labels:
+        SourceLeft:
+          Title: "HTTP:80"
