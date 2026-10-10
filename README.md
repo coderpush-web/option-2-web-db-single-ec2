@@ -91,7 +91,7 @@ flowchart TD
 
 | Development Environment (`opt2-dev.png261.dev`) | Production Environment (`opt2.png261.dev`) |
 | :---: | :---: |
-| ![Development Environment](screenshots/dev_screenshot.png) | ![Production Environment](screenshots/prod_screenshot.png) |
+| ![Development Environment](docs/screenshots/dev_screenshot.png) | ![Production Environment](docs/screenshots/prod_screenshot.png) |
 
 > 🚀 **Deployment Notes:**
 > - **Development (`opt2-dev.png261.dev`):** Runs debug mode with dev configuration parameters.

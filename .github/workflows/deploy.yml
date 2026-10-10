@@ -125,7 +125,7 @@ jobs:
 
           aws cloudformation deploy \
             --template-file modules/app.yaml \
-            --stack-name "$ENV_NAME-app" \
+            --stack-name "$ENV_NAME-opt2-app" \
             --parameter-overrides $PARAM_ARGS \
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset \
@@ -148,7 +148,7 @@ jobs:
 
           echo "=== CloudFormation Stack Outputs ==="
           aws cloudformation describe-stacks \
-            --stack-name "$ENV_NAME-app" \
+            --stack-name "$ENV_NAME-opt2-app" \
             --region "$AWS_REGION" \
             --query "Stacks[0].Outputs[*].[OutputKey,OutputValue]" \
             --output table 2>/dev/null || true

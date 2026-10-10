@@ -185,7 +185,7 @@ Resources:
       Scheme: internet-facing
       Type: application
       Subnets:
-        - Fn::ImportValue: !Sub '${EnvironmentName}-PublicSubnet1Id'
+        - Fn::ImportValue: !Sub '${EnvironmentName}-PublicSubnetId'
         - Fn::ImportValue: !Sub '${EnvironmentName}-PublicSubnet2Id'
       SecurityGroups:
         - Fn::ImportValue: !Sub '${EnvironmentName}-ALBSecurityGroupId'
