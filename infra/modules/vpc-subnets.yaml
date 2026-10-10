@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Common Network Module: VPC, Internet Gateway, Public Subnet, Private Subnets across 2 AZs'
+Description: 'Common Network Module: VPC, Internet Gateway, Multi-AZ Public & Private Subnets'
 
 Parameters:
   EnvironmentName:
@@ -16,14 +16,22 @@ Parameters:
   PublicSubnetCIDR:
     Type: String
     Default: 10.0.1.0/24
+    Description: CIDR block for Public Subnet 1 (AZ 1)
+
+  PublicSubnet2CIDR:
+    Type: String
+    Default: 10.0.2.0/24
+    Description: CIDR block for Public Subnet 2 (AZ 2 - Multi-AZ)
 
   PrivateSubnet1CIDR:
     Type: String
     Default: 10.0.10.0/24
+    Description: CIDR block for Private Subnet 1 (AZ 1)
 
   PrivateSubnet2CIDR:
     Type: String
     Default: 10.0.11.0/24
+    Description: CIDR block for Private Subnet 2 (AZ 2)
 
 Resources:
   VPC:
@@ -62,7 +70,20 @@ Resources:
       AvailabilityZone: !Select [0, !GetAZs '']
       Tags:
         - Key: Name
-          Value: !Sub '${EnvironmentName}-public-subnet'
+          Value: !Sub '${EnvironmentName}-public-subnet-1'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-public-subnet-2'
         - Key: Environment
           Value: !Ref EnvironmentName
 
@@ -116,6 +137,12 @@ Resources:
       SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref PublicRouteTable
 
+  PublicSubnet2Association:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -146,10 +173,16 @@ Outputs:
       Name: !Sub '${EnvironmentName}-VpcId'
 
   PublicSubnetId:
-    Description: Public Subnet ID
+    Description: Public Subnet 1 ID
     Value: !Ref PublicSubnet
     Export:
       Name: !Sub '${EnvironmentName}-PublicSubnetId'
+
+  PublicSubnet2Id:
+    Description: Public Subnet 2 ID (Multi-AZ)
+    Value: !Ref PublicSubnet2
+    Export:
+      Name: !Sub '${EnvironmentName}-PublicSubnet2Id'
 
   PrivateSubnet1Id:
     Description: Private Subnet 1 ID

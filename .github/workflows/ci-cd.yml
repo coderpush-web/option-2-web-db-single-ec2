@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ dev, main ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   pull-requests: write
@@ -170,7 +174,7 @@ jobs:
   deploy-infra:
     name: 5. Deploy Infrastructure (CloudFormation)
     needs: [test-application, test-and-lint-infra, build-and-push-ecr, finops-cost-check]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
