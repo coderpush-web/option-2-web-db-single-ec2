@@ -63,16 +63,11 @@ Diagram:
       Title: "Public Subnets (AZ1 & AZ2)"
       Children:
         - ALB
-        - NATGW
 
     ALB:
       Type: AWS::ElasticLoadBalancingV2::LoadBalancer
       Preset: "Application Load Balancer"
       Title: "Application Load Balancer"
-
-    NATGW:
-      Type: AWS::EC2::NatGateway
-      Title: "NAT Gateway (Egress)"
 
     PrivateSubnet:
       Type: AWS::EC2::Subnet
@@ -80,10 +75,15 @@ Diagram:
       Title: "Private Subnet 1 (AZ1)"
       Children:
         - WebInstance
+        - VPCEndpoints
 
     WebInstance:
       Type: AWS::EC2::Instance
       Title: "Docker Next.js + SQLite\n(Private EC2 Instance)"
+
+    VPCEndpoints:
+      Type: AWS::EC2::VPCEndpoint
+      Title: "AWS PrivateLink\n(ECR & S3 Endpoints)"
 
   Links:
     - Source: User
@@ -135,12 +135,15 @@ Diagram:
           Title: "HTTP:80"
     - Source: WebInstance
       SourcePosition: E
-      Target: NATGW
-      TargetPosition: N
+      Target: VPCEndpoints
+      TargetPosition: W
       TargetArrowHead:
         Type: Open
       Type: orthogonal
-    - Source: NATGW
+      Labels:
+        SourceRight:
+          Title: "PrivateLink"
+    - Source: VPCEndpoints
       SourcePosition: E
       Target: ECR
       TargetPosition: W

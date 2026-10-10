@@ -165,34 +165,89 @@ Resources:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTable
 
-  NATGatewayEIP:
-    Type: AWS::EC2::EIP
-    DependsOn: VPCGatewayAttachment
+  VPCEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      Domain: vpc
+      GroupDescription: Security group for VPC Endpoints (ECR, CloudWatch Logs)
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref VpcCIDR
       Tags:
         - Key: Name
-          Value: !Sub '${EnvironmentName}-nat-eip'
+          Value: !Sub '${EnvironmentName}-vpce-sg'
         - Key: Environment
           Value: !Ref EnvironmentName
 
-  NATGateway:
-    Type: AWS::EC2::NatGateway
+  ECRApiEndpoint:
+    Type: AWS::EC2::VPCEndpoint
     Properties:
-      AllocationId: !GetAtt NATGatewayEIP.AllocationId
-      SubnetId: !Ref PublicSubnet
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.api'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
       Tags:
         - Key: Name
-          Value: !Sub '${EnvironmentName}-nat-gw'
+          Value: !Sub '${EnvironmentName}-ecr-api-vpce'
         - Key: Environment
           Value: !Ref EnvironmentName
 
-  PrivateRoute:
-    Type: AWS::EC2::Route
+  ECRDkrEndpoint:
+    Type: AWS::EC2::VPCEndpoint
     Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NATGateway
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.dkr'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-ecr-dkr-vpce'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-s3-gateway-vpce'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  LogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-logs-vpce'
+        - Key: Environment
+          Value: !Ref EnvironmentName
 
 Outputs:
   VpcId:
@@ -224,9 +279,3 @@ Outputs:
     Value: !Ref PrivateSubnet2
     Export:
       Name: !Sub '${EnvironmentName}-PrivateSubnet2Id'
-
-  NatGatewayId:
-    Description: NAT Gateway ID
-    Value: !Ref NATGateway
-    Export:
-      Name: !Sub '${EnvironmentName}-NatGatewayId'
