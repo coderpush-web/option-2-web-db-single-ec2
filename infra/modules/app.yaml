@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Application Compute Module: Option 2 - Single Web EC2 running React App & SQLite DB in Docker from ECR'
+Description: 'Application Compute Module: Option 2 - Single Web EC2 running React App & SQLite DB with CloudFront Edge Caching'
 
 Parameters:
   EnvironmentName:
@@ -114,13 +114,88 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub '${EnvironmentName} Option 2 Web Distribution'
+        Enabled: true
+        HttpVersion: http2and3
+        PriceClass: PriceClass_All
+        Origins:
+          - Id: EC2Origin
+            DomainName: !GetAtt WebServerInstance.PublicDnsName
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: http-only
+              OriginKeepaliveTimeout: 5
+              OriginReadTimeout: 30
+        DefaultCacheBehavior:
+          TargetOriginId: EC2Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - PATCH
+            - DELETE
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          OriginRequestPolicyId: 216adef6-5c1d-47e7-81dd-c14a2a485ea9
+          Compress: true
+        CacheBehaviors:
+          - PathPattern: '/_next/static/*'
+            TargetOriginId: EC2Origin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+            Compress: true
+          - PathPattern: '/static/*'
+            TargetOriginId: EC2Origin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+            Compress: true
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-opt2-cf'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
 Outputs:
   WebsiteURL:
-    Description: Website URL
-    Value: !Sub 'http://${WebServerEIP.PublicIp}'
+    Description: Website URL via CloudFront CDN
+    Value: !Sub 'https://${CloudFrontDistribution.DomainName}'
+  CloudFrontDomainName:
+    Description: CloudFront Distribution Domain Name
+    Value: !GetAtt CloudFrontDistribution.DomainName
+  CloudFrontDistributionId:
+    Description: CloudFront Distribution ID
+    Value: !Ref CloudFrontDistribution
   PublicIP:
     Description: Elastic IP
     Value: !Ref WebServerEIP
+  PublicDNS:
+    Description: EC2 Public DNS Name
+    Value: !GetAtt WebServerInstance.PublicDnsName
   CustomDomainURL:
     Description: Custom Domain Website URL (png261.dev)
     Value: !Sub 'https://${SubdomainName}'
@@ -129,10 +204,13 @@ Outputs:
     Value: !Ref DomainName
   DnsRecordType:
     Description: DNS Record Type for Cloudflare / Route 53
-    Value: 'A'
+    Value: 'CNAME'
   DnsRecordName:
     Description: DNS Record Name
     Value: !Ref SubdomainName
   DnsRecordValue:
-    Description: DNS Record Value (IPv4 Target)
-    Value: !Ref WebServerEIP
+    Description: DNS Record Value (CloudFront Distribution Target)
+    Value: !GetAtt CloudFrontDistribution.DomainName
+  CloudflareProxyGuide:
+    Description: Cloudflare Setup Instructions
+    Value: !Sub 'Add CNAME in Cloudflare: ${SubdomainName} -> ${CloudFrontDistribution.DomainName} (or A record to ${WebServerEIP.PublicIp}) with SSL/TLS Full.'
