@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { signIn } from '@/auth';
+import { signIn, auth } from '@/auth';
 import { AuthError } from 'next-auth';
 import { sqlClient } from './db';
 
@@ -34,6 +34,13 @@ export type State = {
 };
 
 export async function createInvoice(prevState: State, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) {
+    return {
+      message: 'Unauthorized: Please log in to perform this action.',
+    };
+  }
+
   // Validate form fields using Zod
   const validatedFields = CreateInvoice.safeParse({
     customerId: formData.get('customerId'),
@@ -79,6 +86,13 @@ export async function updateInvoice(
   prevState: State,
   formData: FormData,
 ) {
+  const session = await auth();
+  if (!session?.user) {
+    return {
+      message: 'Unauthorized: Please log in to perform this action.',
+    };
+  }
+
   const validatedFields = UpdateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
@@ -113,6 +127,11 @@ export async function updateInvoice(
 }
 
 export async function deleteInvoice(id: string) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error('Unauthorized: Please log in to perform this action.');
+  }
+
   try {
     if (sqlClient) {
       await sqlClient`DELETE FROM invoices WHERE id = ${id}`;
