@@ -9,7 +9,13 @@ Diagram:
       Direction: vertical
       Children:
         - AWSCloud
+        - CloudflareEdge
         - User
+
+    CloudflareEdge:
+      Type: AWS::Diagram::Resource
+      Preset: Internet
+      Title: "Cloudflare Proxy (CDN/WAF)\nopt2.png261.dev"
 
     AWSCloud:
       Type: AWS::Diagram::Cloud
@@ -53,7 +59,7 @@ Diagram:
   Links:
     - Source: User
       SourcePosition: N
-      Target: IGW
+      Target: CloudflareEdge
       TargetPosition: S
       TargetArrowHead:
         Type: Open
@@ -61,9 +67,9 @@ Diagram:
       Labels:
         SourceLeft:
           Title: "HTTPS:443"
-    - Source: IGW
+    - Source: CloudflareEdge
       SourcePosition: N
-      Target: WebInstance
+      Target: IGW
       TargetPosition: S
       TargetArrowHead:
         Type: Open
@@ -71,3 +77,10 @@ Diagram:
       Labels:
         SourceLeft:
           Title: "HTTP:80"
+    - Source: IGW
+      SourcePosition: N
+      Target: WebInstance
+      TargetPosition: S
+      TargetArrowHead:
+        Type: Open
+      Type: orthogonal
