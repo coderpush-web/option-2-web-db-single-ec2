@@ -30,37 +30,60 @@ Diagram:
 
     AWSCloud:
       Type: AWS::Diagram::Cloud
-      Direction: vertical
+      Direction: horizontal
       Preset: AWSCloudNoLogo
       Align: center
       Children:
         - VPC
+        - ECR
+
+    ECR:
+      Type: AWS::ECR
+      Title: "Amazon ECR\n(App Image Repository)"
 
     VPC:
       Type: AWS::EC2::VPC
       Title: "VPC (10.0.0.0/16)"
       Direction: vertical
       Children:
+        - PrivateSubnet
         - PublicSubnet
       BorderChildren:
         - Position: S
           Resource: IGW
 
+    IGW:
+      Type: AWS::EC2::InternetGateway
+      IconFill:
+        Type: rect
+
     PublicSubnet:
       Type: AWS::EC2::Subnet
       Preset: PublicSubnet
-      Title: "Public Subnet (10.0.1.0/24)"
+      Title: "Public Subnets (AZ1 & AZ2)"
+      Children:
+        - ALB
+        - NATGW
+
+    ALB:
+      Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+      Preset: "Application Load Balancer"
+      Title: "Application Load Balancer"
+
+    NATGW:
+      Type: AWS::EC2::NatGateway
+      Title: "NAT Gateway (Egress)"
+
+    PrivateSubnet:
+      Type: AWS::EC2::Subnet
+      Preset: PrivateSubnet
+      Title: "Private Subnet 1 (AZ1)"
       Children:
         - WebInstance
 
     WebInstance:
       Type: AWS::EC2::Instance
-      Title: "Next.js + SQLite Instance\n(Local EBS Volume)"
-
-    IGW:
-      Type: AWS::EC2::InternetGateway
-      IconFill:
-        Type: rect
+      Title: "Docker Next.js + SQLite\n(Private EC2 Instance)"
 
   Links:
     - Source: User
@@ -95,8 +118,35 @@ Diagram:
           Title: "HTTP:80"
     - Source: IGW
       SourcePosition: N
+      Target: ALB
+      TargetPosition: S
+      TargetArrowHead:
+        Type: Open
+      Type: orthogonal
+    - Source: ALB
+      SourcePosition: N
       Target: WebInstance
       TargetPosition: S
       TargetArrowHead:
         Type: Open
       Type: orthogonal
+      Labels:
+        SourceLeft:
+          Title: "HTTP:80"
+    - Source: WebInstance
+      SourcePosition: E
+      Target: NATGW
+      TargetPosition: N
+      TargetArrowHead:
+        Type: Open
+      Type: orthogonal
+    - Source: NATGW
+      SourcePosition: E
+      Target: ECR
+      TargetPosition: W
+      TargetArrowHead:
+        Type: Open
+      Type: orthogonal
+      Labels:
+        SourceRight:
+          Title: "Pull Image"

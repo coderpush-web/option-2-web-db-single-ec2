@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Application Compute Module: Option 2 - Single Web EC2 running React App & SQLite DB with CloudFront Edge Caching'
+Description: 'Application Compute Module: Option 2 - Single Web EC2 running React App & SQLite DB in Private Subnet behind ALB with CloudFront Edge Caching'
 
 Parameters:
   EnvironmentName:
@@ -32,6 +32,36 @@ Parameters:
     Default: opt2-dev.png261.dev
 
 Resources:
+  AppECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${EnvironmentName}-option-2-web-app'
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 5 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 5
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-option-2-ecr'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
   WebServerInstance:
     Type: AWS::EC2::Instance
     Properties:
@@ -40,9 +70,9 @@ Resources:
       IamInstanceProfile:
         Fn::ImportValue: !Sub '${EnvironmentName}-EC2InstanceProfileName'
       SubnetId:
-        Fn::ImportValue: !Sub '${EnvironmentName}-PublicSubnetId'
+        Fn::ImportValue: !Sub '${EnvironmentName}-PrivateSubnet1Id'
       SecurityGroupIds:
-        - Fn::ImportValue: !Sub '${EnvironmentName}-StandaloneWebSecurityGroupId'
+        - Fn::ImportValue: !Sub '${EnvironmentName}-WebSecurityGroupId'
       MetadataOptions:
         HttpTokens: required
         HttpPutResponseHopLimit: 1
@@ -71,10 +101,14 @@ Resources:
           IMAGE_URI="${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EnvironmentName}-option-2-web-app:${ImageTag}"
 
           echo "Logging into Amazon ECR..."
-          aws ecr get-login-password --region "${AWS::Region}" | docker login --username AWS --password-stdin "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com" || true
+          for i in {1..5}; do
+            aws ecr get-login-password --region "${AWS::Region}" | docker login --username AWS --password-stdin "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com" && break || sleep 5
+          done
 
           echo "Pulling Docker image: $IMAGE_URI"
-          docker pull "$IMAGE_URI" || true
+          for i in {1..5}; do
+            docker pull "$IMAGE_URI" && break || sleep 5
+          done
 
           cat << 'SVC' > /etc/systemd/system/react-webapp.service
           [Unit]
@@ -110,16 +144,59 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
-  WebServerEIP:
-    Type: AWS::EC2::EIP
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Domain: vpc
-      InstanceId: !Ref WebServerInstance
+      Name: !Sub '${EnvironmentName}-opt2-alb'
+      Scheme: internet-facing
+      Type: application
+      Subnets:
+        - Fn::ImportValue: !Sub '${EnvironmentName}-PublicSubnet1Id'
+        - Fn::ImportValue: !Sub '${EnvironmentName}-PublicSubnet2Id'
+      SecurityGroups:
+        - Fn::ImportValue: !Sub '${EnvironmentName}-ALBSecurityGroupId'
       Tags:
         - Key: Name
-          Value: !Sub '${EnvironmentName}-web-sqlite-eip'
+          Value: !Sub '${EnvironmentName}-opt2-alb'
         - Key: Environment
           Value: !Ref EnvironmentName
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${EnvironmentName}-opt2-tg'
+      Port: 80
+      Protocol: HTTP
+      VpcId:
+        Fn::ImportValue: !Sub '${EnvironmentName}-VpcId'
+      TargetType: instance
+      Targets:
+        - Id: !Ref WebServerInstance
+          Port: 80
+      HealthCheckPath: /login
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '30'
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-opt2-tg'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
 
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
@@ -130,8 +207,8 @@ Resources:
         HttpVersion: http2and3
         PriceClass: PriceClass_All
         Origins:
-          - Id: EC2Origin
-            DomainName: !GetAtt WebServerInstance.PublicDnsName
+          - Id: ALBOrigin
+            DomainName: !GetAtt ApplicationLoadBalancer.DNSName
             CustomOriginConfig:
               HTTPPort: 80
               HTTPSPort: 443
@@ -139,7 +216,7 @@ Resources:
               OriginKeepaliveTimeout: 5
               OriginReadTimeout: 30
         DefaultCacheBehavior:
-          TargetOriginId: EC2Origin
+          TargetOriginId: ALBOrigin
           ViewerProtocolPolicy: redirect-to-https
           AllowedMethods:
             - GET
@@ -158,7 +235,7 @@ Resources:
           Compress: true
         CacheBehaviors:
           - PathPattern: '/_next/static/*'
-            TargetOriginId: EC2Origin
+            TargetOriginId: ALBOrigin
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods:
               - GET
@@ -169,7 +246,7 @@ Resources:
             CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
             Compress: true
           - PathPattern: '/static/*'
-            TargetOriginId: EC2Origin
+            TargetOriginId: ALBOrigin
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods:
               - GET
@@ -197,12 +274,15 @@ Outputs:
   CloudFrontDistributionId:
     Description: CloudFront Distribution ID
     Value: !Ref CloudFrontDistribution
-  PublicIP:
-    Description: Elastic IP
-    Value: !Ref WebServerEIP
-  PublicDNS:
-    Description: EC2 Public DNS Name
-    Value: !GetAtt WebServerInstance.PublicDnsName
+  LoadBalancerDNS:
+    Description: Application Load Balancer DNS Name
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+  ECRRepositoryUri:
+    Description: ECR Repository URI
+    Value: !GetAtt AppECRRepository.RepositoryUri
+  PrivateIP:
+    Description: EC2 Private IP
+    Value: !GetAtt WebServerInstance.PrivateIp
   CustomDomainURL:
     Description: Custom Domain Website URL (png261.dev)
     Value: !Sub 'https://${SubdomainName}'
@@ -220,4 +300,4 @@ Outputs:
     Value: !GetAtt CloudFrontDistribution.DomainName
   CloudflareProxyGuide:
     Description: Cloudflare Setup Instructions
-    Value: !Sub 'Add CNAME in Cloudflare: ${SubdomainName} -> ${CloudFrontDistribution.DomainName} (or A record to ${WebServerEIP.PublicIp}) with SSL/TLS Full.'
+    Value: !Sub 'Add CNAME in Cloudflare: ${SubdomainName} -> ${CloudFrontDistribution.DomainName} with SSL/TLS Full.'
