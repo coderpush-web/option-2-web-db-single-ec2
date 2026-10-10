@@ -27,7 +27,7 @@ Hạ tầng và Mã nguồn ứng dụng độc lập cho **Option 2: Web Applic
 
 <!-- INFRACOST_START -->
 ### 💵 Kết quả Kiểm tra Chi phí Tự động CloudFormation (Infracost CI/CD Output)
-*Thời gian kiểm tra: Sat Oct 10 05:03:34 UTC 2026*
+*Thời gian kiểm tra: Sat Oct 10 05:43:29 UTC 2026*
 
 ```text
 No costed resources detected.
@@ -37,6 +37,10 @@ No costed resources detected.
 ## 3. Kiến trúc Hạ tầng (Architecture Diagram)
 ![Architecture](infra/architecture_diagram.png)
 
+### Điểm nổi bật của kiến trúc:
+- **CloudFront CDN Edge Caching:** Caching tối ưu cho static assets (`/_next/static/*`, `/static/*`), giảm tải request vào EC2 instance duy nhất, giúp bảo vệ tài nguyên CPU/RAM cho database SQLite chạy cục bộ.
+- **Single EC2 Web + Local Database:** Máy chủ EC2 chạy Dockerized Node.js/Next.js kết hợp database SQLite cục bộ lưu trên ổ đĩa EBS gp3 mã hóa.
+- **Cloudflare Proxy + Custom Domain:** Định tuyến người dùng qua Cloudflare CDN/WAF tới CloudFront endpoint.
 
 ## 📸 Giao Diện Ứng Dụng Thực Tế (Live Screenshots - Dev & Prod)
 
@@ -79,12 +83,12 @@ Quy trình tuân thủ nghiêm ngặt chuẩn DevOps hiện đại:
 Hạ tầng hỗ trợ ánh xạ tên miền `png261.dev` cho cả môi trường Development và Production:
 
 | Môi trường | Nhánh Git | Subdomain | Loại bản ghi DNS | Giá trị đích (Target) | Proxy Cloudflare |
-| :--- | :--- | :--- | :---: | :--- | :---: |
-| **Development** | `dev` | `opt2-dev.png261.dev` | `A` | `${ServerEIP.PublicIp}` (Dev EIP) | Bật (Proxied ☁️) |
-| **Production** | `main` | `opt2.png261.dev` | `A` | `${ServerEIP.PublicIp}` (Prod EIP) | Bật (Proxied ☁️) |
+| :--- | :--- | :--- | :---: | :--- | :--- |
+| **Development** | `dev` | `opt2-dev.png261.dev` | `CNAME` | `${CloudFrontDistribution.DomainName}` | Bật (Proxied ☁️) |
+| **Production** | `main` | `opt2.png261.dev` | `CNAME` | `${CloudFrontDistribution.DomainName}` | Bật (Proxied ☁️) |
 
 > 💡 **Khuyến nghị SSL/HTTPS qua Cloudflare:**
-> Do tên miền `png261.dev` được quản trị Nameserver tại Cloudflare, khi tạo bản ghi `A` với trạng thái **Proxied (Đám mây màu cam ☁️)**:
+> Do tên miền `png261.dev` được quản trị Nameserver tại Cloudflare, khi tạo bản ghi `CNAME` với trạng thái **Proxied (Đám mây màu cam ☁️)**:
 > - Cloudflare sẽ tự động cấp chứng chỉ **Universal SSL/TLS miễn phí** (HTTPS xanh).
 > - Tự động kích hoạt CDN caching và bảo vệ chống tấn công DDoS Lớp 7.
 

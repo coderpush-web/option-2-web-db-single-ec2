@@ -9,13 +9,24 @@ Diagram:
       Direction: vertical
       Children:
         - AWSCloud
+        - CloudFront
         - CloudflareEdge
         - User
+
+    User:
+      Type: AWS::Diagram::Resource
+      Preset: User
+      Title: "User"
 
     CloudflareEdge:
       Type: AWS::Diagram::Resource
       Preset: Internet
       Title: "Cloudflare Proxy (CDN/WAF)\nopt2.png261.dev"
+
+    CloudFront:
+      Type: AWS::Diagram::Resource
+      Preset: "Amazon CloudFront"
+      Title: "Amazon CloudFront\n(Static Cache & Edge)"
 
     AWSCloud:
       Type: AWS::Diagram::Cloud
@@ -51,11 +62,6 @@ Diagram:
       IconFill:
         Type: rect
 
-    User:
-      Type: AWS::Diagram::Resource
-      Preset: User
-      Title: "User"
-
   Links:
     - Source: User
       SourcePosition: N
@@ -68,6 +74,16 @@ Diagram:
         SourceLeft:
           Title: "HTTPS:443"
     - Source: CloudflareEdge
+      SourcePosition: N
+      Target: CloudFront
+      TargetPosition: S
+      TargetArrowHead:
+        Type: Open
+      Type: orthogonal
+      Labels:
+        SourceLeft:
+          Title: "HTTPS:443"
+    - Source: CloudFront
       SourcePosition: N
       Target: IGW
       TargetPosition: S
