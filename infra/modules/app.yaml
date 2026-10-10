@@ -76,7 +76,7 @@ Resources:
   WebAuthSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: !Sub '${EnvironmentName}-web-auth-secret'
+      Name: !Sub '${EnvironmentName}-opt2-web-auth-secret'
       Description: !Sub 'NextAuth session encryption key for ${EnvironmentName} web app'
       GenerateSecretString:
         SecretStringTemplate: '{}'
@@ -85,7 +85,7 @@ Resources:
         ExcludeCharacters: '"@/\'
       Tags:
         - Key: Name
-          Value: !Sub '${EnvironmentName}-web-auth-secret'
+          Value: !Sub '${EnvironmentName}-opt2-web-auth-secret'
         - Key: Environment
           Value: !Ref EnvironmentName
 
@@ -140,7 +140,7 @@ Resources:
 
           echo "Fetching application secrets from AWS Secrets Manager..."
           SECRET_VAL=$(aws secretsmanager get-secret-value \
-            --secret-id "${EnvironmentName}-web-auth-secret" \
+            --secret-id "${EnvironmentName}-opt2-web-auth-secret" \
             --region "${AWS::Region}" \
             --query SecretString \
             --output text 2>/dev/null || true)
