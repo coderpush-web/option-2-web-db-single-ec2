@@ -15,13 +15,27 @@ Independent infrastructure and application source code for **Option 2: Web Appli
 
 ## 2. Cost Analysis
 
-### A. Cost by Purchasing Option (t3.medium 4GB RAM Recommended for Web + DB)
-| Purchasing Model | EC2 Compute | Supporting Components (IP + 50GB EBS + Backup) | Total Monthly Cost | Approx. Local Currency (VND) |
-| :--- | :--- | :--- | :--- | :--- |
-| **On-Demand (Default)** | $30.37 / mo | $9.15 / mo | **$39.52 / mo** | ~998,000 VND |
-| **1-Year Savings Plan (1-Yr Commitment)** | $19.13 / mo | $9.15 / mo | **$28.28 / mo** *(28% savings)* | ~714,000 VND |
-| **3-Year Savings Plan (3-Yr Commitment)** | $12.13 / mo | $9.15 / mo | **$21.28 / mo** *(46% savings)* | ~537,000 VND |
-| **Spot Instance (Dev/Test Only)** | $9.07 / mo | $9.15 / mo | **$18.22 / mo** *(Not recommended for stateful DB)* | ~460,000 VND |
+> 💡 **Verified via Infracost CLI:** Cost calculations derived directly from CloudFormation templates using `infracost scan ./infra/modules`.
+
+### A. Component Cost Breakdown (Infracost CLI Verified)
+| CloudFormation Module / Component | AWS Resource Type | Monthly Cost (USD) | Notes |
+| :--- | :--- | :--- | :--- |
+| **Application Load Balancer (ALB)** | `AWS::ElasticLoadBalancingV2::LoadBalancer` | **$16.43** | Multi-AZ SSL/TLS termination and health checking |
+| **Single EC2 Web + Local DB** | `AWS::EC2::Instance` (`t3.micro` + EBS gp3) | **$9.49** | Baseline 1x instance (730 hrs/month) |
+| **Secrets & Monitoring** | `SecretsManager`, `CloudWatch`, `SNS` | **$0.30** | Auth token secret + operational alarms |
+| **Subtotal (Core Web + Database Tier)** | `infra/modules/app.yaml` | **$26.22 / mo** | ~664,000 VND / month |
+| **Private VPC Interface Endpoints (Optional)** | `AWS::EC2::VPCEndpoint` (7 endpoints) | **$102.20** | SSM, ECR, CloudWatch Logs in Private Subnets |
+| **Total (Full Enterprise Isolated Architecture)** | `infra/modules/` | **$128.42 / mo** | ~3,250,000 VND / month |
+
+### B. Cost by Purchasing Option & Architecture Mode
+| Purchasing Model / Mode | Web + DB Compute (`t3.micro`) | ALB & Supporting | Total (Lean Mode)* | Total (Full Isolated) | Approx. Local Currency (Lean) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **On-Demand (Default)** | $9.49 | $16.73 | **$26.22 / mo** | **$128.42 / mo** | ~664,000 VND |
+| **1-Year Savings Plan** | $5.98 | $16.73 | **$22.71 / mo** *(13% off)* | **$124.91 / mo** | ~575,000 VND |
+| **3-Year Savings Plan** | $3.79 | $16.73 | **$20.52 / mo** *(22% off)* | **$122.72 / mo** | ~520,000 VND |
+| **Production Scale (`t3.small` 2GB RAM)** | $18.98 | $16.73 | **$35.71 / mo** | **$137.91 / mo** | ~905,000 VND |
+
+*\*Lean Mode: Compute + ALB + CloudFront routing without dedicated VPC Interface Endpoints ($102.20/mo).*
 
 ## 3. Disaster Recovery & Recovery Time (MTTR)
 
