@@ -26,7 +26,9 @@ Independent infrastructure and application source code for **Option 2: Web Appli
 | **On-Demand (Default)** | $9.49 | $49.58 | **$59.07 / mo** | Baseline |
 | **1-Year Savings Plan** | $5.98 | $49.58 | **$55.56 / mo** | 6% savings ($3.51/mo) |
 | **3-Year Savings Plan** | $3.79 | $49.58 | **$53.37 / mo** | 10% savings ($5.70/mo) |
-| **Production Scale (`t3.small` 2GB RAM)** | $18.98 | $49.58 | **$68.56 / mo** | Vertical scaling |
+| **Spot Instance (Dev/Test)** | $2.84 | $49.58 | **$52.42 / mo** | 11% savings ($6.65/mo) |
+
+*(Optional Production Vertical Scale: `t3.small` 2GB RAM is **$68.56 / mo**).*
 
 ## 3. Disaster Recovery & Recovery Time (MTTR)
 
