@@ -16,17 +16,17 @@ Independent infrastructure and application source code for **Option 2: Web Appli
 | **Application Load Balancer (ALB)** | `AWS::ElasticLoadBalancingV2::LoadBalancer` | **$16.43** | Multi-AZ SSL/TLS termination and health checking |
 | **Single EC2 Web + Local DB** | `AWS::EC2::Instance` (`t3.micro` + EBS gp3) | **$9.49** | Baseline 1x instance (730 hrs/month) |
 | **Secrets & Monitoring** | `SecretsManager`, `CloudWatch`, `SNS` | **$0.30** | Auth token secret + operational alarms |
-| **Total Monthly Cost** | `infra/modules/` | **$59.07 / mo** | ~1,495,000 VND / month |
+| **Total Monthly Cost** | `infra/modules/` | **$59.07 / mo** | Baseline on-demand configuration |
 
 *(Saves **$69.35 / month** compared to the previous 7 VPC Interface Endpoints architecture at $102.20/month).*
 
 ### B. Cost by Purchasing Option & Commitment
-| Purchasing Model | Web + DB Compute (`t3.micro`) | NAT Gateway & ALB | Total Monthly Cost | Approx. Local Currency (VND) |
+| Purchasing Model | Web + DB Compute (`t3.micro`) | NAT Gateway & ALB | Total Monthly Cost | Cost Savings vs On-Demand |
 | :--- | :--- | :--- | :--- | :--- |
-| **On-Demand (Default)** | $9.49 | $49.58 | **$59.07 / mo** | ~1,495,000 VND |
-| **1-Year Savings Plan** | $5.98 | $49.58 | **$55.56 / mo** *(6% savings)* | ~1,405,000 VND |
-| **3-Year Savings Plan** | $3.79 | $49.58 | **$53.37 / mo** *(10% savings)* | ~1,350,000 VND |
-| **Production Scale (`t3.small` 2GB RAM)** | $18.98 | $49.58 | **$68.56 / mo** | ~1,735,000 VND |
+| **On-Demand (Default)** | $9.49 | $49.58 | **$59.07 / mo** | Baseline |
+| **1-Year Savings Plan** | $5.98 | $49.58 | **$55.56 / mo** | 6% savings ($3.51/mo) |
+| **3-Year Savings Plan** | $3.79 | $49.58 | **$53.37 / mo** | 10% savings ($5.70/mo) |
+| **Production Scale (`t3.small` 2GB RAM)** | $18.98 | $49.58 | **$68.56 / mo** | Vertical scaling |
 
 ## 3. Disaster Recovery & Recovery Time (MTTR)
 
