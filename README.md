@@ -1,6 +1,6 @@
 # Option 2: Web Application + Local DB on Single EC2
 
-Independent infrastructure and application source code for **Option 2: Web Application + Local Persistent DB on Single EC2 with Amazon CloudFront Edge Caching**.
+Independent infrastructure and application source code for **Option 2: Web Application + Local Persistent DB on Single EC2 with Amazon CloudFront Edge Caching and AWS NAT Gateway**.
 
 ## 1. Architecture Overview
 ![Architecture](infra/architecture_diagram.png)
@@ -8,6 +8,7 @@ Independent infrastructure and application source code for **Option 2: Web Appli
 ### Key Architectural Highlights:
 - **CloudFront CDN Edge Caching:** Caches static assets (`/_next/static/*`) globally, reducing direct request pressure on the single EC2 server to preserve CPU/RAM for the co-located local database.
 - **Application Load Balancer (ALB):** Spans Multi-AZ Public Subnets, handling SSL/TLS termination and forwarding traffic to the private EC2 instance.
+- **AWS NAT Gateway:** Deployed in the Public Subnet with an Elastic IP, enabling the private EC2 instance to pull images from Amazon ECR and perform updates securely without inbound exposure.
 - **Single EC2 Web + Local Database:** Runs the Dockerized Next.js application alongside a local SQLite database mounted onto an encrypted EBS gp3 volume (`/var/data/sqlite`).
 - **AWS SSM Container Reload:** CI/CD triggers zero-SSH remote container updates via `aws ssm send-command`, pulling the latest image without opening inbound port 22.
 - **Automated Monitoring & Alerts:** CloudWatch Alarms (ALB 5XX and EC2 CPU > 85%) notify engineers via Amazon SNS Topic; log retention auto-expires after 14 days (Dev) / 30 days (Prod).
@@ -20,22 +21,21 @@ Independent infrastructure and application source code for **Option 2: Web Appli
 ### A. Component Cost Breakdown (Infracost CLI Verified)
 | CloudFormation Module / Component | AWS Resource Type | Monthly Cost (USD) | Notes |
 | :--- | :--- | :--- | :--- |
+| **AWS NAT Gateway** | `AWS::EC2::NatGateway` | **$32.85** | Managed NAT Gateway in Public Subnet (0.0.0.0/0 egress) |
 | **Application Load Balancer (ALB)** | `AWS::ElasticLoadBalancingV2::LoadBalancer` | **$16.43** | Multi-AZ SSL/TLS termination and health checking |
 | **Single EC2 Web + Local DB** | `AWS::EC2::Instance` (`t3.micro` + EBS gp3) | **$9.49** | Baseline 1x instance (730 hrs/month) |
 | **Secrets & Monitoring** | `SecretsManager`, `CloudWatch`, `SNS` | **$0.30** | Auth token secret + operational alarms |
-| **Subtotal (Core Web + Database Tier)** | `infra/modules/app.yaml` | **$26.22 / mo** | ~664,000 VND / month |
-| **Private VPC Interface Endpoints (Optional)** | `AWS::EC2::VPCEndpoint` (7 endpoints) | **$102.20** | SSM, ECR, CloudWatch Logs in Private Subnets |
-| **Total (Full Enterprise Isolated Architecture)** | `infra/modules/` | **$128.42 / mo** | ~3,250,000 VND / month |
+| **Total Monthly Cost** | `infra/modules/` | **$59.07 / mo** | ~1,495,000 VND / month |
 
-### B. Cost by Purchasing Option & Architecture Mode
-| Purchasing Model / Mode | Web + DB Compute (`t3.micro`) | ALB & Supporting | Total (Lean Mode)* | Total (Full Isolated) | Approx. Local Currency (Lean) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **On-Demand (Default)** | $9.49 | $16.73 | **$26.22 / mo** | **$128.42 / mo** | ~664,000 VND |
-| **1-Year Savings Plan** | $5.98 | $16.73 | **$22.71 / mo** *(13% off)* | **$124.91 / mo** | ~575,000 VND |
-| **3-Year Savings Plan** | $3.79 | $16.73 | **$20.52 / mo** *(22% off)* | **$122.72 / mo** | ~520,000 VND |
-| **Production Scale (`t3.small` 2GB RAM)** | $18.98 | $16.73 | **$35.71 / mo** | **$137.91 / mo** | ~905,000 VND |
+*(Tiết kiệm **$69.35 / tháng** so với mô hình cũ sử dụng 7 VPC Interface Endpoints $102.20/tháng).*
 
-*\*Lean Mode: Compute + ALB + CloudFront routing without dedicated VPC Interface Endpoints ($102.20/mo).*
+### B. Cost by Purchasing Option & Commitment
+| Purchasing Model | Web + DB Compute (`t3.micro`) | NAT Gateway & ALB | Total Monthly Cost | Approx. Local Currency (VND) |
+| :--- | :--- | :--- | :--- | :--- |
+| **On-Demand (Default)** | $9.49 | $49.58 | **$59.07 / mo** | ~1,495,000 VND |
+| **1-Year Savings Plan** | $5.98 | $49.58 | **$55.56 / mo** *(6% savings)* | ~1,405,000 VND |
+| **3-Year Savings Plan** | $3.79 | $49.58 | **$53.37 / mo** *(10% savings)* | ~1,350,000 VND |
+| **Production Scale (`t3.small` 2GB RAM)** | $18.98 | $49.58 | **$68.56 / mo** | ~1,735,000 VND |
 
 ## 3. Disaster Recovery & Recovery Time (MTTR)
 

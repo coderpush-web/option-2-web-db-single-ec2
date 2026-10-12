@@ -65,13 +65,20 @@ Diagram:
       Type: AWS::EC2::Subnet
       Preset: PublicSubnet
       Title: "Public Subnet"
+      Direction: horizontal
       Children:
         - ALB
+        - NATGW
 
     ALB:
       Type: AWS::ElasticLoadBalancingV2::LoadBalancer
       Preset: "Application Load Balancer"
       Title: "Application Load Balancer"
+
+    NATGW:
+      Type: AWS::EC2::NatGateway
+      Preset: "NAT gateway"
+      Title: "NAT Gateway"
 
     PrivateSubnet:
       Type: AWS::EC2::Subnet
@@ -114,6 +121,13 @@ Diagram:
         Type: Open
       Type: orthogonal
     - Source: WebInstance
+      SourcePosition: S
+      Target: NATGW
+      TargetPosition: N
+      TargetArrowHead:
+        Type: Open
+      Type: orthogonal
+    - Source: NATGW
       SourcePosition: E
       Target: ECR
       TargetPosition: W

@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Common Network Module: VPC, Internet Gateway, Multi-AZ Public & Private Subnets'
+Description: 'Common Network Module: VPC, Internet Gateway, NAT Gateway, Multi-AZ Public & Private Subnets'
 
 Parameters:
   EnvironmentName:
@@ -143,6 +143,29 @@ Resources:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-nat-eip'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-nat-gw'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -152,6 +175,13 @@ Resources:
           Value: !Sub '${EnvironmentName}-private-rt'
         - Key: Environment
           Value: !Ref EnvironmentName
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
 
   PrivateSubnet1Association:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -164,163 +194,6 @@ Resources:
     Properties:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTable
-
-  VPCEndpointSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for VPC Endpoints (ECR, CloudWatch Logs)
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - Description: 'Allow HTTPS inbound for VPC Endpoints from within VPC'
-          IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: !Ref VpcCIDR
-      Tags:
-        - Key: Name
-          Value: !Sub '${EnvironmentName}-vpce-sg'
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  ECRApiEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId: !Ref VPC
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.api'
-      VpcEndpointType: Interface
-      PrivateDnsEnabled: true
-      SubnetIds:
-        - !Ref PrivateSubnet1
-        - !Ref PrivateSubnet2
-      SecurityGroupIds:
-        - !Ref VPCEndpointSecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Sub '${EnvironmentName}-ecr-api-vpce'
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  ECRDkrEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId: !Ref VPC
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.dkr'
-      VpcEndpointType: Interface
-      PrivateDnsEnabled: true
-      SubnetIds:
-        - !Ref PrivateSubnet1
-        - !Ref PrivateSubnet2
-      SecurityGroupIds:
-        - !Ref VPCEndpointSecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Sub '${EnvironmentName}-ecr-dkr-vpce'
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  S3GatewayEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId: !Ref VPC
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
-      VpcEndpointType: Gateway
-      RouteTableIds:
-        - !Ref PrivateRouteTable
-      Tags:
-        - Key: Name
-          Value: !Sub '${EnvironmentName}-s3-gateway-vpce'
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  LogsEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId: !Ref VPC
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
-      VpcEndpointType: Interface
-      PrivateDnsEnabled: true
-      SubnetIds:
-        - !Ref PrivateSubnet1
-        - !Ref PrivateSubnet2
-      SecurityGroupIds:
-        - !Ref VPCEndpointSecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Sub '${EnvironmentName}-logs-vpce'
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  SecretsManagerEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId: !Ref VPC
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
-      VpcEndpointType: Interface
-      PrivateDnsEnabled: true
-      SubnetIds:
-        - !Ref PrivateSubnet1
-        - !Ref PrivateSubnet2
-      SecurityGroupIds:
-        - !Ref VPCEndpointSecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Sub '${EnvironmentName}-secretsmanager-vpce'
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  SSMEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId: !Ref VPC
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ssm'
-      VpcEndpointType: Interface
-      PrivateDnsEnabled: true
-      SubnetIds:
-        - !Ref PrivateSubnet1
-        - !Ref PrivateSubnet2
-      SecurityGroupIds:
-        - !Ref VPCEndpointSecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Sub '${EnvironmentName}-ssm-vpce'
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  SSMMessagesEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId: !Ref VPC
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ssmmessages'
-      VpcEndpointType: Interface
-      PrivateDnsEnabled: true
-      SubnetIds:
-        - !Ref PrivateSubnet1
-        - !Ref PrivateSubnet2
-      SecurityGroupIds:
-        - !Ref VPCEndpointSecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Sub '${EnvironmentName}-ssmmessages-vpce'
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  EC2MessagesEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId: !Ref VPC
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ec2messages'
-      VpcEndpointType: Interface
-      PrivateDnsEnabled: true
-      SubnetIds:
-        - !Ref PrivateSubnet1
-        - !Ref PrivateSubnet2
-      SecurityGroupIds:
-        - !Ref VPCEndpointSecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Sub '${EnvironmentName}-ec2messages-vpce'
-        - Key: Environment
-          Value: !Ref EnvironmentName
 
 Outputs:
   VpcId:
@@ -352,3 +225,9 @@ Outputs:
     Value: !Ref PrivateSubnet2
     Export:
       Name: !Sub '${EnvironmentName}-PrivateSubnet2Id'
+
+  NatGatewayId:
+    Description: NAT Gateway ID
+    Value: !Ref NatGateway
+    Export:
+      Name: !Sub '${EnvironmentName}-NatGatewayId'
