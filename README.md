@@ -34,50 +34,6 @@ Independent infrastructure and application source code for **Option 2: Web Appli
 ## 3. Architecture Overview
 ![Architecture](infra/architecture_diagram.png)
 
-```mermaid
-flowchart TD
-    subgraph Client ["Client Access"]
-        Users["Users / Browsers"]
-        Domain["Custom Domain (opt2.png261.dev)"]
-    end
-
-    subgraph Edge ["Edge Layer"]
-        CF["Amazon CloudFront CDN (Cache Static /_next/*)"]
-    end
-
-    subgraph AWS_VPC ["AWS VPC (ap-southeast-1)"]
-        subgraph Public_Subnets ["Public Subnets (AZ1 & AZ2)"]
-            ALB["Application Load Balancer (ALB)"]
-            TG["Target Group (Healthcheck: /api/health)"]
-        end
-
-        subgraph Private_Subnet ["Private Subnet (AZ1)"]
-            subgraph EC2 ["Standalone Web & DB Server"]
-                Container["Docker Next.js Container (Port 80)"]
-                EBS_Vol["EBS GP3 Volume (/var/data/sqlite)"]
-                Container -->|Mount Volume| EBS_Vol
-            end
-        end
-    end
-
-    subgraph Management ["Observability & Deployment"]
-        CW_Logs["CloudWatch LogGroup<br/>(14d Dev / 30d Prod)"]
-        CW_Alarms["CloudWatch Alarms<br/>(ALB 5XX + EC2 CPU > 85%)"]
-        SNS["SNS OpsAlertTopic"]
-        Email["Ops Alert Email"]
-        SSM["AWS Systems Manager (SSM Agent)"]
-        CI_CD["GitHub Actions CI/CD<br/>(SSM Remote Container Reload)"]
-    end
-
-    Users --> Domain --> CF
-    CF -->|Dynamic requests| ALB
-    ALB --> TG --> Container
-    EC2 -.->|Logs| CW_Logs
-    EC2 -.->|Metrics| CW_Alarms
-    ALB -.->|Metrics| CW_Alarms
-    CW_Alarms --> SNS --> Email
-    CI_CD -->|SSM Run Command| SSM --> Container
-```
 
 ### Key Architectural Highlights:
 - **CloudFront CDN Edge Caching:** Caches static assets (`/_next/static/*`) globally, reducing direct request pressure on the single EC2 server to preserve CPU/RAM for the co-located local database.
