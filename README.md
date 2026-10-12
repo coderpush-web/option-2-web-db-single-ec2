@@ -5,15 +5,6 @@ Independent infrastructure and application source code for **Option 2: Web Appli
 ## 1. Architecture Overview
 ![Architecture](infra/architecture_diagram.png)
 
-### Key Architectural Highlights:
-- **CloudFront CDN Edge Caching:** Caches static assets (`/_next/static/*`) globally, reducing direct request pressure on the single EC2 server to preserve CPU/RAM for the co-located local database.
-- **Application Load Balancer (ALB):** Spans Multi-AZ Public Subnets, handling SSL/TLS termination and forwarding traffic to the private EC2 instance.
-- **AWS NAT Gateway:** Deployed in the Public Subnet with an Elastic IP, enabling the private EC2 instance to pull images from Amazon ECR and perform updates securely without inbound exposure.
-- **Single EC2 Web + Local Database:** Runs the Dockerized Next.js application alongside a local SQLite database mounted onto an encrypted EBS gp3 volume (`/var/data/sqlite`).
-- **AWS SSM Container Reload:** CI/CD triggers zero-SSH remote container updates via `aws ssm send-command`, pulling the latest image without opening inbound port 22.
-- **Automated Monitoring & Alerts:** CloudWatch Alarms (ALB 5XX and EC2 CPU > 85%) notify engineers via Amazon SNS Topic; log retention auto-expires after 14 days (Dev) / 30 days (Prod).
-- **AWS-Native Custom Domain:** Directs user traffic via DNS CNAME (DNS-only) directly to Amazon CloudFront Edge & ALB endpoints.
-
 ## 2. Cost Analysis
 
 > 💡 **Verified via Infracost CLI:** Cost calculations derived directly from CloudFormation templates using `infracost scan ./infra/modules`.
@@ -27,7 +18,7 @@ Independent infrastructure and application source code for **Option 2: Web Appli
 | **Secrets & Monitoring** | `SecretsManager`, `CloudWatch`, `SNS` | **$0.30** | Auth token secret + operational alarms |
 | **Total Monthly Cost** | `infra/modules/` | **$59.07 / mo** | ~1,495,000 VND / month |
 
-*(Tiết kiệm **$69.35 / tháng** so với mô hình cũ sử dụng 7 VPC Interface Endpoints $102.20/tháng).*
+*(Saves **$69.35 / month** compared to the previous 7 VPC Interface Endpoints architecture at $102.20/month).*
 
 ### B. Cost by Purchasing Option & Commitment
 | Purchasing Model | Web + DB Compute (`t3.micro`) | NAT Gateway & ALB | Total Monthly Cost | Approx. Local Currency (VND) |
