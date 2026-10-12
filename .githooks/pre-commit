@@ -58,7 +58,7 @@ fi
 # 5. Checkov Infrastructure as Code (IaC) security scan
 echo "  [4/8] Running Checkov IaC security scanner..."
 if command -v checkov >/dev/null 2>&1; then
-  checkov --config-file .checkov.yaml || {
+  checkov --config-file .devsecops/checkov.yaml || {
     echo "⚠️ [pre-commit] Checkov scan completed with warnings (soft-fail enabled)."
   }
   echo "  ✅ Checkov scan completed."
@@ -91,8 +91,14 @@ else
 fi
 
 # 8. Automated Tests
-echo "  [7/8] Running automated tests (test/test_api.js)..."
-if [ -f "test/test_api.js" ]; then
+echo "  [7/8] Running automated tests (app/test/test_api.js)..."
+if [ -f "app/test/test_api.js" ]; then
+  node app/test/test_api.js || {
+    echo "❌ [pre-commit] FAILED: app/test/test_api.js failed!"
+    exit 1
+  }
+  echo "  ✅ Automated tests passed."
+elif [ -f "test/test_api.js" ]; then
   node test/test_api.js || {
     echo "❌ [pre-commit] FAILED: test/test_api.js failed!"
     exit 1

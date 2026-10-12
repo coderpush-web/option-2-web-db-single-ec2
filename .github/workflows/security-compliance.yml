@@ -102,7 +102,13 @@ jobs:
         run: |
           pip install licensecheck || true
           if command -v licensecheck >/dev/null 2>&1; then
-            licensecheck --zero || true
+            if [ -f .devsecops/licensecheck.toml ]; then
+              cp .devsecops/licensecheck.toml ./licensecheck.toml
+              licensecheck --zero || true
+              rm -f ./licensecheck.toml
+            else
+              licensecheck --zero || true
+            fi
           fi
         continue-on-error: true
 

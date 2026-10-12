@@ -32,13 +32,13 @@ repos:
 
       - id: sensitive-data-pii-check
         name: Sensitive Data & PII Guard (AWS Labs Standard)
-        entry: bash scripts/pii_guard.sh
+        entry: bash .devsecops/scripts/pii_guard.sh
         language: system
         pass_filenames: false
 
       - id: checkov
         name: Checkov IaC Security Scanner
-        entry: checkov --config-file .checkov.yaml
+        entry: checkov --config-file .devsecops/checkov.yaml
         language: system
         files: ^infra/modules/.*\.ya?ml$
         pass_filenames: false
@@ -52,13 +52,14 @@ repos:
 
       - id: test-api
         name: Automated API & Dependency Tests
-        entry: node test/test_api.js
+        entry: node app/test/test_api.js
         language: system
         pass_filenames: false
 
       - id: oidc-security-check
         name: Enforce OIDC Security (No Static Keys)
-        entry: bash scripts/oidc_check.sh
+        entry: bash .devsecops/scripts/oidc_check.sh
         language: system
         files: ^\.github/workflows/.*\.ya?ml$
         pass_filenames: false
+

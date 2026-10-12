@@ -3,7 +3,9 @@ set -e
 
 echo "🚀 [pre-push] Running pre-push integration validation..."
 
-if [ -f "test/test_api.js" ]; then
+if [ -f "app/test/test_api.js" ]; then
+  node app/test/test_api.js
+elif [ -f "test/test_api.js" ]; then
   node test/test_api.js
 fi
 

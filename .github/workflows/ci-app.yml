@@ -36,7 +36,7 @@ jobs:
 
       - name: Run Automated Unit & Integration Tests
         run: |
-          node test/test_api.js
+          node app/test/test_api.js
           echo "✅ Automated tests passed successfully!"
 
       - name: Validate Next.js Build

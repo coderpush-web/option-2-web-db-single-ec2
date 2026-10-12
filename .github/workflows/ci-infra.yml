@@ -53,5 +53,5 @@ jobs:
       - name: Run Checkov IaC Security Scanner
         run: |
           pip install checkov
-          checkov --config-file .checkov.yaml
+          checkov --config-file .devsecops/checkov.yaml
           echo "✅ Checkov scan completed!"
