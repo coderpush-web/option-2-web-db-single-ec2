@@ -7,7 +7,7 @@ Independent infrastructure and application source code for **Option 2: Web Appli
 
 ## 2. Cost Analysis
 
-> 💡 **Verified via Infracost CLI:** Cost calculations derived directly from CloudFormation templates using `infracost scan ./infra/modules`.
+> **Verified via Infracost CLI:** Cost calculations derived directly from CloudFormation templates using `infracost scan ./infra/modules`.
 
 ### A. Component Cost Breakdown (Infracost CLI Verified)
 | CloudFormation Module / Component | AWS Resource Type | Monthly Cost (USD) | Notes |
